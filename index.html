@@ -956,7 +956,7 @@ function updateCar(dt) {
 
   const hFront = getGroundHeight(car.position.x + fx * sampleDist, car.position.z + fz * sampleDist);
   const hBack = getGroundHeight(car.position.x - fx * sampleDist, car.position.z - fz * sampleDist);
-  const pitchTarget = -Math.atan2(hFront - hBack, sampleDist * 2) * 2.2;
+  const pitchTarget = Math.atan2(hFront - hBack, sampleDist * 2) * 2.2;
 
   const hRight = getGroundHeight(car.position.x + rx * sampleDist, car.position.z + rz * sampleDist);
   const hLeft = getGroundHeight(car.position.x - rx * sampleDist, car.position.z - rz * sampleDist);

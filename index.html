@@ -1023,23 +1023,36 @@ function updateCar(dt) {
   const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(car.quaternion);
   car.position.addScaledVector(forward, carState.speed * dt);
 
-  // 簡易的な地面追従(山道の起伏に軽く合わせる)
-  const targetY = getGroundHeight(car.position.x, car.position.z) + ROAD_SURFACE_OFFSET;
-  car.position.y = targetY;
-
-  // 坂道の傾斜に応じて車体を前後(ピッチ)・左右(ロール)に傾ける
+  // 4輪の実際の位置(ホイールベース・トレッド幅)で地形の高さを測り、
+  // それをもとに車の高さと前後・左右の傾きを決める(タイヤが確実に接地するように)
   const yaw = car.rotation.y;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
   const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-  const sampleDist = 1.3;
+  const halfTrack = 1.05;  // ホイールの左右オフセット
+  const halfWheelbase = 1.55; // ホイールの前後オフセット
 
-  const hFront = getGroundHeight(car.position.x + fx * sampleDist, car.position.z + fz * sampleDist);
-  const hBack = getGroundHeight(car.position.x - fx * sampleDist, car.position.z - fz * sampleDist);
-  const pitchTarget = Math.atan2(hFront - hBack, sampleDist * 2) * 2.2;
+  function wheelGroundHeight(sideSign, frontSign) {
+    const wx = car.position.x + rx * halfTrack * sideSign + fx * halfWheelbase * frontSign;
+    const wz = car.position.z + rz * halfTrack * sideSign + fz * halfWheelbase * frontSign;
+    return getGroundHeight(wx, wz) + ROAD_SURFACE_OFFSET;
+  }
 
-  const hRight = getGroundHeight(car.position.x + rx * sampleDist, car.position.z + rz * sampleDist);
-  const hLeft = getGroundHeight(car.position.x - rx * sampleDist, car.position.z - rz * sampleDist);
-  const rollTarget = Math.atan2(hRight - hLeft, sampleDist * 2);
+  const hFL = wheelGroundHeight(-1, 1);
+  const hFR = wheelGroundHeight(1, 1);
+  const hRL = wheelGroundHeight(-1, -1);
+  const hRR = wheelGroundHeight(1, -1);
+
+  // 車の高さは4輪の平均の接地面に合わせる
+  car.position.y = (hFL + hFR + hRL + hRR) / 4;
+
+  // 坂道の傾斜に応じて車体を前後(ピッチ)・左右(ロール)に傾ける
+  const hFrontAvg = (hFL + hFR) / 2;
+  const hRearAvg = (hRL + hRR) / 2;
+  const hRightAvg = (hFR + hRR) / 2;
+  const hLeftAvg = (hFL + hRL) / 2;
+
+  const pitchTarget = Math.atan2(hFrontAvg - hRearAvg, halfWheelbase * 2) * 2.2;
+  const rollTarget = Math.atan2(hRightAvg - hLeftAvg, halfTrack * 2);
 
   carState.pitch += (pitchTarget - carState.pitch) * 0.25;
   carState.roll += (rollTarget - carState.roll) * 0.15;

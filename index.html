@@ -196,20 +196,10 @@ function sampleRealElevation(x, z) {
   return h0 * (1 - tz) + h1 * tz;
 }
 
-// 起動時に一度だけ取得を試みる(標高・道路データを並行して取得)
+// 実在の標高・道路データの取得は重くなるため無効化し、
+// 従来のプレースホルダーの地形・ループ道路を使う
 let osmRoadElements = [];
-try {
-  realElevationGrid = await fetchSanFranciscoElevation();
-} catch (e) {
-  console.warn('実在の標高データの取得に失敗したため、従来の地形にフォールバックします', e);
-  realElevationGrid = null;
-}
-try {
-  osmRoadElements = await fetchSanFranciscoRoads();
-} catch (e) {
-  console.warn('実在の道路データの取得に失敗したため、従来のループ道路にフォールバックします', e);
-  osmRoadElements = [];
-}
+realElevationGrid = null;
 
 function terrainHeight(x, z) {
   if (realElevationGrid) {
@@ -242,6 +232,12 @@ const groundMat = new THREE.MeshStandardMaterial({ color: 0x4a7c3a, side: THREE.
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.receiveShadow = true;
 scene.add(ground);
+
+// 地面に厚みを持たせるための土台(地形の一番低い場所より下に大きな箱を敷く)
+const groundSlabMat = new THREE.MeshStandardMaterial({ color: 0x3a3025, roughness: 0.9 });
+const groundSlab = new THREE.Mesh(new THREE.BoxGeometry(groundSize, 6, groundSize), groundSlabMat);
+groundSlab.position.y = -6;
+scene.add(groundSlab);
 
 // 街エリア(中央付近)を示すプレースホルダーのビル群
 const cityBuildings = new THREE.Group();
@@ -371,6 +367,8 @@ function buildRoadFromWaypoints(waypoints, width) {
       scene.add(dash);
     }
   }
+
+  return pts;
 }
 
 // ループしない開いた道(実際の通り)用の帯状ジオメトリ生成
@@ -431,11 +429,363 @@ const roadWaypoints = [
   { x: -90, z: 90 }
 ];
 
+let loopRoadPoints = null;
 if (osmRoadElements.length > 0) {
   buildRealRoadsFromOSM(osmRoadElements);
 } else {
-  buildRoadFromWaypoints(roadWaypoints, 10);
+  loopRoadPoints = buildRoadFromWaypoints(roadWaypoints, 10);
 }
+
+// ==========================================================
+// 高速道路(高架。両端はスロープで地上の道とつながり、橋脚とガードレールを付ける)
+// ==========================================================
+function buildElevatedHighway(x1, z1, x2, z2, width, clearHeight, rampLength, roadMaterial, pillarMaterial) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+  const length = Math.sqrt(dx * dx + dz * dz);
+  const perpX = dz / length;
+  const perpZ = -dx / length;
+  const steps = Math.max(2, Math.ceil(length / 6));
+  const halfWidth = width / 2;
+  const deckThickness = 0.8; // 橋桁の厚み
+
+  // 各断面につき「上面左・上面右・下面左・下面右」の4頂点を作り、
+  // 上面・下面・左右の側面をつなぐことで、橋桁に実際の厚みを持たせる。
+  const positions = [];
+  const centerPts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const dist = t * length;
+    const cx = x1 + dx * t;
+    const cz = z1 + dz * t;
+    const baseGround = terrainHeight(cx, cz);
+    let heightOffset;
+    if (dist < rampLength) heightOffset = clearHeight * (dist / rampLength);
+    else if (dist > length - rampLength) heightOffset = clearHeight * ((length - dist) / rampLength);
+    else heightOffset = clearHeight;
+    const yTop = baseGround + heightOffset + ROAD_SURFACE_OFFSET;
+    const yBottom = yTop - deckThickness;
+    const lx = cx + perpX * halfWidth, lz = cz + perpZ * halfWidth;
+    const rx = cx - perpX * halfWidth, rz = cz - perpZ * halfWidth;
+    positions.push(lx, yTop, lz);     // 0: 上面左
+    positions.push(rx, yTop, rz);     // 1: 上面右
+    positions.push(lx, yBottom, lz);  // 2: 下面左
+    positions.push(rx, yBottom, rz);  // 3: 下面右
+    centerPts.push({ x: cx, z: cz, y: yTop, heightOffset, dist });
+  }
+
+  const indices = [];
+  for (let i = 0; i < steps; i++) {
+    const a = i * 4, b = a + 1, c = a + 2, d = a + 3;
+    const A = (i + 1) * 4, B = A + 1, C = A + 2, D = A + 3;
+    // 上面
+    indices.push(a, b, A, b, B, A);
+    // 下面(裏側を向くよう巻き順を逆に)
+    indices.push(c, C, d, d, C, D);
+    // 左側面
+    indices.push(a, c, A, c, C, A);
+    // 右側面
+    indices.push(b, B, d, d, B, D);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const road = new THREE.Mesh(geo, roadMaterial);
+  road.receiveShadow = true;
+  road.castShadow = true;
+  scene.add(road);
+
+  // ガードレール(道路の両端に沿わせる低い壁)
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.4, roughness: 0.5 });
+  [-1, 1].forEach((side) => {
+    for (let i = 0; i < centerPts.length - 1; i++) {
+      const p = centerPts[i];
+      const next = centerPts[i + 1];
+      const segLen = Math.hypot(next.x - p.x, next.z - p.z);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, segLen + 0.05), railMat);
+      const midX = (p.x + next.x) / 2 + perpX * halfWidth * side;
+      const midZ = (p.z + next.z) / 2 + perpZ * halfWidth * side;
+      const midY = (p.y + next.y) / 2 + 0.25;
+      rail.position.set(midX, midY, midZ);
+      rail.rotation.y = Math.atan2(next.x - p.x, next.z - p.z);
+      scene.add(rail);
+    }
+  });
+
+  // 橋脚(高架になっている区間だけ、一定間隔で設置)
+  const pillarSpacing = 15;
+  let nextPillarDist = rampLength;
+  centerPts.forEach((p) => {
+    if (p.heightOffset > clearHeight * 0.9 && p.dist >= nextPillarDist) {
+      const pillarHeight = p.heightOffset + ROAD_SURFACE_OFFSET - 0.2;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, pillarHeight, 10), pillarMaterial);
+      pillar.position.set(p.x, terrainHeight(p.x, p.z) + pillarHeight / 2, p.z);
+      pillar.castShadow = true;
+      scene.add(pillar);
+      nextPillarDist += pillarSpacing;
+    }
+  });
+}
+
+// 複数の点をなめらかな曲線でつなぐランプ(合流時に道路の向きに沿わせるために使う)
+function buildCurvedRamp(waypoints, width, clearHeightStart, clearHeightEnd, material, pillarMaterial) {
+  const controlPoints = waypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
+  const curve = new THREE.CatmullRomCurve3(controlPoints, false, 'catmullrom', 0.5);
+  const pts = curve.getPoints(60);
+  const n = pts.length;
+  const deckThickness = 0.6;
+  const halfWidth = width / 2;
+
+  // 累積距離を計算
+  const cumDist = [0];
+  for (let i = 1; i < n; i++) {
+    cumDist.push(cumDist[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  }
+  const totalDist = cumDist[n - 1];
+
+  const positions = [];
+  const centerPts = [];
+  for (let i = 0; i < n; i++) {
+    const cur = pts[i];
+    const next = pts[Math.min(n - 1, i + 1)];
+    const prev = pts[Math.max(0, i - 1)];
+    const tangent = new THREE.Vector3().subVectors(next, prev);
+    if (tangent.lengthSq() < 1e-8) tangent.set(0, 0, 1);
+    tangent.normalize();
+    const perpX = tangent.z, perpZ = -tangent.x;
+    const t = totalDist > 0 ? cumDist[i] / totalDist : 0;
+    const heightOffset = clearHeightStart + (clearHeightEnd - clearHeightStart) * t;
+    const yTop = terrainHeight(cur.x, cur.z) + heightOffset + ROAD_SURFACE_OFFSET;
+    const yBottom = yTop - deckThickness;
+    const lx = cur.x + perpX * halfWidth, lz = cur.z + perpZ * halfWidth;
+    const rx = cur.x - perpX * halfWidth, rz = cur.z - perpZ * halfWidth;
+    positions.push(lx, yTop, lz, rx, yTop, rz, lx, yBottom, lz, rx, yBottom, rz);
+    centerPts.push({ x: cur.x, z: cur.z, y: yTop, heightOffset, perpX, perpZ });
+  }
+
+  const indices = [];
+  for (let i = 0; i < n - 1; i++) {
+    const a = i * 4, b = a + 1, c = a + 2, d = a + 3;
+    const A = (i + 1) * 4, B = A + 1, C = A + 2, D = A + 3;
+    indices.push(a, b, A, b, B, A);
+    indices.push(c, C, d, d, C, D);
+    indices.push(a, c, A, c, C, A);
+    indices.push(b, B, d, d, B, D);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const deck = new THREE.Mesh(geo, material);
+  deck.receiveShadow = true;
+  deck.castShadow = true;
+  scene.add(deck);
+
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.4, roughness: 0.5 });
+  [-1, 1].forEach((side) => {
+    for (let i = 0; i < n - 1; i++) {
+      const p = centerPts[i], next = centerPts[i + 1];
+      const segLen = Math.hypot(next.x - p.x, next.z - p.z);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, segLen + 0.05), railMat);
+      rail.position.set(
+        (p.x + next.x) / 2 + p.perpX * halfWidth * side,
+        (p.y + next.y) / 2 + 0.2,
+        (p.z + next.z) / 2 + p.perpZ * halfWidth * side
+      );
+      rail.rotation.y = Math.atan2(next.x - p.x, next.z - p.z);
+      scene.add(rail);
+    }
+  });
+
+  const pillarSpacing = 12;
+  let nextPillarDist = 8;
+  centerPts.forEach((p, i) => {
+    if (p.heightOffset > 1.5 && cumDist[i] >= nextPillarDist) {
+      const pillarHeight = p.heightOffset + ROAD_SURFACE_OFFSET - 0.15;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.65, pillarHeight, 10), pillarMat);
+      pillar.position.set(p.x, terrainHeight(p.x, p.z) + pillarHeight / 2, p.z);
+      pillar.castShadow = true;
+      scene.add(pillar);
+      nextPillarDist += pillarSpacing;
+    }
+  });
+}
+
+const highwayMat = new THREE.MeshStandardMaterial({ color: 0x4a4a52, roughness: 0.85, side: THREE.DoubleSide });
+const pillarMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 });
+const highwayClearHeight = 9;
+
+// 高速道路本体(街の周りをぐるっと回る、常に一定の高さを保つ高架ループ)
+function buildElevatedLoop(waypoints, width, clearHeight, roadMaterial, pillarMaterial) {
+  const controlPoints = waypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
+  const curve = new THREE.CatmullRomCurve3(controlPoints, true, 'catmullrom', 0.5);
+  const rawPts = curve.getPoints(150);
+  rawPts.pop();
+  const count = rawPts.length;
+  const deckThickness = 0.8;
+  const halfWidth = width / 2;
+
+  const positions = [];
+  const centerPts = [];
+  for (let i = 0; i < count; i++) {
+    const cur = rawPts[i];
+    const next = rawPts[(i + 1) % count];
+    const prev = rawPts[(i - 1 + count) % count];
+    const tangent = new THREE.Vector3().subVectors(next, prev).normalize();
+    const perpX = tangent.z, perpZ = -tangent.x;
+    const yTop = terrainHeight(cur.x, cur.z) + clearHeight + ROAD_SURFACE_OFFSET;
+    const yBottom = yTop - deckThickness;
+    const lx = cur.x + perpX * halfWidth, lz = cur.z + perpZ * halfWidth;
+    const rx = cur.x - perpX * halfWidth, rz = cur.z - perpZ * halfWidth;
+    positions.push(lx, yTop, lz, rx, yTop, rz, lx, yBottom, lz, rx, yBottom, rz);
+    centerPts.push({ x: cur.x, z: cur.z, y: yTop, perpX, perpZ });
+  }
+
+  const indices = [];
+  for (let i = 0; i < count; i++) {
+    const ni = (i + 1) % count;
+    const a = i * 4, b = a + 1, c = a + 2, d = a + 3;
+    const A = ni * 4, B = A + 1, C = A + 2, D = A + 3;
+    indices.push(a, b, A, b, B, A);   // 上面
+    indices.push(c, C, d, d, C, D);   // 下面
+    indices.push(a, c, A, c, C, A);   // 左側面
+    indices.push(b, B, d, d, B, D);   // 右側面
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const deck = new THREE.Mesh(geo, roadMaterial);
+  deck.receiveShadow = true;
+  deck.castShadow = true;
+  scene.add(deck);
+
+  // ガードレール
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.4, roughness: 0.5 });
+  [-1, 1].forEach((side) => {
+    for (let i = 0; i < count; i++) {
+      const p = centerPts[i], next = centerPts[(i + 1) % count];
+      const segLen = Math.hypot(next.x - p.x, next.z - p.z);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, segLen + 0.05), railMat);
+      rail.position.set(
+        (p.x + next.x) / 2 + p.perpX * halfWidth * side,
+        (p.y + next.y) / 2 + 0.25,
+        (p.z + next.z) / 2 + p.perpZ * halfWidth * side
+      );
+      rail.rotation.y = Math.atan2(next.x - p.x, next.z - p.z);
+      scene.add(rail);
+    }
+  });
+
+  // 橋脚(一定間隔)
+  let acc = 0;
+  const spacing = 15;
+  for (let i = 0; i < count; i++) {
+    const p = centerPts[i], next = centerPts[(i + 1) % count];
+    acc += Math.hypot(next.x - p.x, next.z - p.z);
+    if (acc >= spacing) {
+      acc -= spacing;
+      const pillarHeight = p.y - ROAD_SURFACE_OFFSET - terrainHeight(p.x, p.z);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, pillarHeight, 10), pillarMaterial);
+      pillar.position.set(p.x, terrainHeight(p.x, p.z) + pillarHeight / 2, p.z);
+      pillar.castShadow = true;
+      scene.add(pillar);
+    }
+  }
+  return rawPts;
+}
+
+// 街(中心付近)の外側をぐるっと回るよう、ループ道路のウェイポイントを外側に拡大して使う
+const highwayLoopWaypoints = roadWaypoints.map((p) => ({ x: p.x * 1.7, z: p.z * 1.7 }));
+const highwayPoints = buildElevatedLoop(highwayLoopWaypoints, 12, highwayClearHeight, highwayMat, pillarMat);
+
+// 一般道路(地上のループ)から高速道路への合流ランプを1か所作る(東側)
+if (loopRoadPoints) {
+  let groundIndex = -1, bestGroundDist = Infinity;
+  for (let i = 0; i < loopRoadPoints.length; i++) {
+    const p = loopRoadPoints[i];
+    const dz = Math.abs(p.z - 40);
+    if (p.x > 0 && dz < bestGroundDist) { bestGroundDist = dz; groundIndex = i; }
+  }
+  const groundJunction = loopRoadPoints[groundIndex];
+  // 合流開始地点での道路の向き(接線)を求める
+  const gNext = loopRoadPoints[(groundIndex + 1) % loopRoadPoints.length];
+  const gPrev = loopRoadPoints[(groundIndex - 1 + loopRoadPoints.length) % loopRoadPoints.length];
+  const roadTangent = new THREE.Vector3().subVectors(gNext, gPrev).normalize();
+
+  let highwayJunction = null, bestPairDist = Infinity;
+  for (const p of highwayPoints) {
+    const d = Math.hypot(p.x - groundJunction.x, p.z - groundJunction.z);
+    if (d < bestPairDist) { bestPairDist = d; highwayJunction = p; }
+  }
+
+  // 道路の右側(進行方向に向かって右)の方向ベクトル
+  const roadRightX = roadTangent.z;
+  const roadRightZ = -roadTangent.x;
+
+  // ランプは道路本線(groundJunction)から始まり、右側へ分岐しながら
+  // 高速道路へ登っていく1本の連続したカーブにする(つなぎ目のズレを防ぐ)
+  const forkOffset = 8; // 道路脇までの距離
+  const rampStart = {
+    x: groundJunction.x + roadRightX * forkOffset,
+    z: groundJunction.z + roadRightZ * forkOffset
+  };
+  const parallelDist = 22;
+  const mergeStart = {
+    x: rampStart.x + roadTangent.x * parallelDist + roadRightX * 6,
+    z: rampStart.z + roadTangent.z * parallelDist + roadRightZ * 6
+  };
+  buildCurvedRamp(
+    [groundJunction, rampStart, mergeStart, highwayJunction],
+    8, 0, highwayClearHeight, highwayMat, pillarMat
+  );
+
+  // ランプ入口の案内標識(緑の看板。ブランド表記なしのシンプルなもの)
+  // ランプの通り道(右側へforkOffset分ずれた位置)から十分離し、車に当たらないようにする
+  const signPoleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.4 });
+  const signBoardMat = new THREE.MeshStandardMaterial({ color: 0x1a7a3a, roughness: 0.7 });
+  const signStripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+
+  const rampDirX = roadTangent.x;
+  const rampDirZ = roadTangent.z;
+  const signSideX = roadRightX;
+  const signSideZ = roadRightZ;
+  const signBaseX = groundJunction.x + signSideX * 18;
+  const signBaseZ = groundJunction.z + signSideZ * 18;
+  const signGroundY = terrainHeight(signBaseX, signBaseZ);
+
+  const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.5, 8), signPoleMat);
+  signPole.position.set(signBaseX, signGroundY + 2.25, signBaseZ);
+  scene.add(signPole);
+
+  const signBoard = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 0.1), signBoardMat);
+  signBoard.position.set(signBaseX, signGroundY + 4.2, signBaseZ);
+  signBoard.rotation.y = Math.atan2(-rampDirX, -rampDirZ); // ランプに向けて表示面を向ける
+  scene.add(signBoard);
+
+  const signStripe = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.15, 0.11), signStripeMat);
+  signStripe.position.set(signBaseX, signGroundY + 4.5, signBaseZ);
+  signStripe.rotation.y = signBoard.rotation.y;
+  scene.add(signStripe);
+}
+
+// ==========================================================
+// 市街地の一般道路を格子状に拡張(街の中を通り抜けられるようにする)
+// ==========================================================
+const cityStreetLines = [
+  // [x1, z1, x2, z2]
+  [-55, -55, 55, -55],
+  [-55, 0, 55, 0],
+  [-55, 55, 55, 55],
+  [-55, -55, -55, 55],
+  [0, -55, 0, 55],
+  [55, -55, 55, 55]
+];
+cityStreetLines.forEach(([x1, z1, x2, z2]) => {
+  const pts = [new THREE.Vector3(x1, 0, z1), new THREE.Vector3(x2, 0, z2)];
+  buildOpenRibbon(pts, 4, ROAD_SURFACE_OFFSET, roadMat);
+});
 
 // ==========================================================
 // 車(オリジナルデザインのスポーツクーペ風シルエット)

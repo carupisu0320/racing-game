@@ -612,6 +612,232 @@ function buildCurvedRamp(waypoints, width, clearHeightStart, clearHeightEnd, mat
   });
 }
 
+// ==========================================================
+// 高速道路入口の案内標識ゲート
+// (電光掲示板・路線案内看板・都市高速入口看板・料金看板・制限速度標識・
+//  カラードラムをオーバーヘッドの支柱にまとめて設置し、実際の高速道路入口の
+//  雰囲気に近づける)
+// ==========================================================
+function makeSignTexture(draw, w, h) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  draw(ctx, w, h);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+
+function drawLedBoard(ctx, w, h) {
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#ff5522';
+  ctx.font = 'bold 60px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('IC まで約5分', w / 2, h / 2);
+}
+
+function drawRouteSign(ctx, w, h) {
+  ctx.fillStyle = '#1a7a3a';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(8, 8, w - 16, h - 16);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 38px sans-serif';
+  const rows = [['入口 IC', '6 km'], ['中央 IC', '16 km'], ['港 IC', '19 km']];
+  rows.forEach((row, i) => {
+    const y = 55 + i * 68;
+    ctx.textAlign = 'left';
+    ctx.fillText(row[0], 26, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(row[1], w - 26, y);
+  });
+}
+
+function drawSpeedLimitSign(ctx, w, h) {
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 6;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#cc2222';
+  ctx.lineWidth = 18;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 9, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#111111';
+  ctx.font = 'bold 96px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('40', cx, cy + 6);
+}
+
+function drawExpresswaySign(ctx, w, h) {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h * 0.5);
+  ctx.fillStyle = '#1a7a3a';
+  ctx.fillRect(0, h * 0.5, w, h * 0.5);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#1a7a3a';
+  ctx.font = 'bold 58px sans-serif';
+  ctx.fillText('都市高速', w / 2, h * 0.25);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.fillText('URBAN EXPWY', w / 2, h * 0.62);
+  ctx.font = 'bold 38px sans-serif';
+  ctx.fillText('入口', w / 2, h * 0.85);
+}
+
+function drawTollSign(ctx, w, h) {
+  ctx.fillStyle = '#1a7a3a';
+  ctx.fillRect(0, 0, w, h);
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 34px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.fillText('普通', 20, h * 0.32);
+  ctx.textAlign = 'right';
+  ctx.fillText('620円', w - 20, h * 0.32);
+  ctx.textAlign = 'left';
+  ctx.fillText('大型', 20, h * 0.7);
+  ctx.textAlign = 'right';
+  ctx.fillText('1230円', w - 20, h * 0.7);
+}
+
+function drawBarrelStripe(ctx, w, h) {
+  const stripeH = h / 6;
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = (i % 2 === 0) ? '#e02020' : '#ffffff';
+    ctx.fillRect(0, i * stripeH, w, stripeH);
+  }
+}
+
+// オーバーヘッドの案内標識ゲート一式(支柱2本+横梁+看板類)を設置する
+function drawChevronStripes(ctx, w, h) {
+  ctx.fillStyle = '#4a4a52'; // アスファルト色(本線・ランプと合わせる)
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#f2f2f2';
+  const stripeCount = 8;
+  const stripeH = h / stripeCount;
+  for (let i = 0; i < stripeCount; i += 2) {
+    const y0 = i * stripeH;
+    ctx.beginPath();
+    ctx.moveTo(0, y0);
+    ctx.lineTo(w, y0 + stripeH * 0.5);
+    ctx.lineTo(w, y0 + stripeH);
+    ctx.lineTo(0, y0 + stripeH * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// 分岐部の三角形のゴア(本線の外側エッジからランプの内側エッジへ向かって
+// 幅が0から広がっていく路面標示)。実際の高速道路入口のゼブラ柄を再現する
+function buildMergeGore(basePos, dirX, dirZ, sideX, sideZ, length, mainHalfWidth, endGap) {
+  const steps = 12;
+  const positions = [];
+  const uvs = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const cx = basePos.x + dirX * length * t;
+    const cz = basePos.z + dirZ * length * t;
+    const outerOffset = mainHalfWidth + endGap * t;
+    const y = terrainHeight(cx, cz) + ROAD_SURFACE_OFFSET + 0.02;
+    const ix = cx + sideX * mainHalfWidth, iz = cz + sideZ * mainHalfWidth;
+    const ox = cx + sideX * outerOffset, oz = cz + sideZ * outerOffset;
+    positions.push(ix, y, iz, ox, y, oz);
+    uvs.push(0, t, 1, t);
+  }
+  const indices = [];
+  for (let i = 0; i < steps; i++) {
+    const a = i * 2, b = a + 1, c = (i + 1) * 2, d = c + 1;
+    indices.push(a, b, c, b, d, c);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const tex = makeSignTexture(drawChevronStripes, 128, 512);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 6);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+function buildExpresswayGateway(basePos, dirX, dirZ, sideX, sideZ, roadHalfWidth) {
+  const groundY = terrainHeight(basePos.x, basePos.z);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.3, roughness: 0.5 });
+  const gantryHeight = 5.5;
+  const span = roadHalfWidth * 2 + 3;
+  const faceYaw = Math.atan2(dirX, dirZ) + Math.PI / 2;
+
+  [-1, 1].forEach((side) => {
+    const px = basePos.x + sideX * (roadHalfWidth + 1.5) * side;
+    const pz = basePos.z + sideZ * (roadHalfWidth + 1.5) * side;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, gantryHeight, 10), poleMat);
+    pole.position.set(px, terrainHeight(px, pz) + gantryHeight / 2, pz);
+    pole.castShadow = true;
+    scene.add(pole);
+  });
+
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(span, 0.5, 0.5), poleMat);
+  beam.position.set(basePos.x, groundY + gantryHeight, basePos.z);
+  beam.rotation.y = faceYaw;
+  beam.castShadow = true;
+  scene.add(beam);
+
+  const boardY = groundY + gantryHeight - 0.9;
+  const boardConfigs = [
+    { w: 3.0, h: 0.95, tex: makeSignTexture(drawLedBoard, 640, 200), offset: -3.4 },
+    { w: 2.4, h: 1.5, tex: makeSignTexture(drawRouteSign, 512, 320), offset: -0.5 },
+    { w: 2.2, h: 1.5, tex: makeSignTexture(drawExpresswaySign, 400, 320), offset: 2.2 },
+    { w: 1.7, h: 1.5, tex: makeSignTexture(drawTollSign, 384, 320), offset: 4.1 }
+  ];
+  boardConfigs.forEach((cfg) => {
+    const mat = new THREE.MeshStandardMaterial({ map: cfg.tex, side: THREE.DoubleSide });
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(cfg.w, cfg.h), mat);
+    board.position.set(basePos.x + sideX * cfg.offset, boardY, basePos.z + sideZ * cfg.offset);
+    board.rotation.y = faceYaw;
+    scene.add(board);
+  });
+
+  // 制限速度の丸看板(単独ポール)
+  const speedPoleX = basePos.x + sideX * (roadHalfWidth + 4);
+  const speedPoleZ = basePos.z + sideZ * (roadHalfWidth + 4);
+  const speedGroundY = terrainHeight(speedPoleX, speedPoleZ);
+  const speedPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.0, 8), poleMat);
+  speedPole.position.set(speedPoleX, speedGroundY + 1.5, speedPoleZ);
+  scene.add(speedPole);
+  const speedTex = makeSignTexture(drawSpeedLimitSign, 256, 256);
+  const speedMat = new THREE.MeshBasicMaterial({ map: speedTex, transparent: true, side: THREE.DoubleSide });
+  const speedSign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), speedMat);
+  speedSign.position.set(speedPoleX, speedGroundY + 3.0, speedPoleZ);
+  speedSign.rotation.y = faceYaw;
+  scene.add(speedSign);
+
+  // 入口脇のカラードラム(赤白ストライプ)
+  const barrelTex = makeSignTexture(drawBarrelStripe, 64, 128);
+  const barrelMat = new THREE.MeshStandardMaterial({ map: barrelTex, roughness: 0.6 });
+  for (let i = -1; i <= 1; i++) {
+    const bx = basePos.x + sideX * (roadHalfWidth + 1) + dirX * (i * 1.2);
+    const bz = basePos.z + sideZ * (roadHalfWidth + 1) + dirZ * (i * 1.2);
+    const by = terrainHeight(bx, bz);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.9, 12), barrelMat);
+    barrel.position.set(bx, by + 0.45, bz);
+    barrel.castShadow = true;
+    scene.add(barrel);
+  }
+}
+
 const highwayMat = new THREE.MeshStandardMaterial({ color: 0x4a4a52, roughness: 0.85, side: THREE.DoubleSide });
 const pillarMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 });
 const highwayClearHeight = 9;
@@ -724,50 +950,50 @@ if (loopRoadPoints) {
   const roadRightX = roadTangent.z;
   const roadRightZ = -roadTangent.x;
 
-  // ランプは道路本線(groundJunction)から始まり、右側へ分岐しながら
-  // 高速道路へ登っていく1本の連続したカーブにする(つなぎ目のズレを防ぐ)
-  const forkOffset = 8; // 道路脇までの距離
+  // ランプは道路本線(groundJunction)から始まり、実際に接続する高速道路側
+  // (highwayJunction)がある方向へ分岐しながら登っていく1本の連続したカーブにする
+  // (つなぎ目のズレを防ぐ)。
+  // 「街の中心から見て外側」という概算では、highwayJunctionの実際の位置とズレて
+  // 逆方向に分岐してしまい本線と重なることがあったため、highwayJunctionへの
+  // 実際の向きを使って判定する。
+  const toHighwayX = highwayJunction.x - groundJunction.x;
+  const toHighwayZ = highwayJunction.z - groundJunction.z;
+  const forkSide = (roadRightX * toHighwayX + roadRightZ * toHighwayZ) >= 0 ? 1 : -1;
+  const mainRoadHalfWidth = 5; // 地上ループ道路の半幅(width=10)
+  const rampHalfWidth = 4; // ランプ道路の半幅(width=8)
+  const forkForward = 25; // 分岐直後、道路と同じ向きに進む距離(平行に接続させるため)
+  // 本線とランプが重ならないよう、両者の半幅の合計より余裕を持ったオフセットにする
+  const forkOffset = mainRoadHalfWidth + rampHalfWidth + 1.5;
   const rampStart = {
-    x: groundJunction.x + roadRightX * forkOffset,
-    z: groundJunction.z + roadRightZ * forkOffset
+    x: groundJunction.x + roadTangent.x * forkForward + roadRightX * forkOffset * forkSide,
+    z: groundJunction.z + roadTangent.z * forkForward + roadRightZ * forkOffset * forkSide
   };
   const parallelDist = 22;
   const mergeStart = {
-    x: rampStart.x + roadTangent.x * parallelDist + roadRightX * 6,
-    z: rampStart.z + roadTangent.z * parallelDist + roadRightZ * 6
+    x: rampStart.x + roadTangent.x * parallelDist + roadRightX * 6 * forkSide,
+    z: rampStart.z + roadTangent.z * parallelDist + roadRightZ * 6 * forkSide
   };
   buildCurvedRamp(
     [groundJunction, rampStart, mergeStart, highwayJunction],
     8, 0, highwayClearHeight, highwayMat, pillarMat
   );
 
-  // ランプ入口の案内標識(緑の看板。ブランド表記なしのシンプルなもの)
-  // ランプの通り道(右側へforkOffset分ずれた位置)から十分離し、車に当たらないようにする
-  const signPoleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.4 });
-  const signBoardMat = new THREE.MeshStandardMaterial({ color: 0x1a7a3a, roughness: 0.7 });
-  const signStripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+  // 分岐部の三角形のゴア(ゼブラ柄の路面標示)。本線の外側エッジから始まり、
+  // ランプの内側エッジに向かって幅が広がっていく、合流レーンらしい見た目にする
+  buildMergeGore(
+    groundJunction, roadTangent.x, roadTangent.z,
+    roadRightX * forkSide, roadRightZ * forkSide,
+    forkForward, mainRoadHalfWidth, forkOffset - rampHalfWidth - mainRoadHalfWidth
+  );
 
+  // ランプ入口の案内標識ゲート
+  // (オーバーヘッドの電光掲示板・路線案内看板・都市高速入口看板・料金看板・
+  //  制限速度標識・カラードラムをまとめて設置する)
   const rampDirX = roadTangent.x;
   const rampDirZ = roadTangent.z;
-  const signSideX = roadRightX;
-  const signSideZ = roadRightZ;
-  const signBaseX = groundJunction.x + signSideX * 18;
-  const signBaseZ = groundJunction.z + signSideZ * 18;
-  const signGroundY = terrainHeight(signBaseX, signBaseZ);
-
-  const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.5, 8), signPoleMat);
-  signPole.position.set(signBaseX, signGroundY + 2.25, signBaseZ);
-  scene.add(signPole);
-
-  const signBoard = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 0.1), signBoardMat);
-  signBoard.position.set(signBaseX, signGroundY + 4.2, signBaseZ);
-  signBoard.rotation.y = Math.atan2(-rampDirX, -rampDirZ); // ランプに向けて表示面を向ける
-  scene.add(signBoard);
-
-  const signStripe = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.15, 0.11), signStripeMat);
-  signStripe.position.set(signBaseX, signGroundY + 4.5, signBaseZ);
-  signStripe.rotation.y = signBoard.rotation.y;
-  scene.add(signStripe);
+  const signSideX = roadRightX * forkSide;
+  const signSideZ = roadRightZ * forkSide;
+  buildExpresswayGateway(rampStart, rampDirX, rampDirZ, signSideX, signSideZ, 4);
 }
 
 // ==========================================================

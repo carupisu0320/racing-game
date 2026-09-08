@@ -931,7 +931,7 @@ if (loopRoadPoints) {
   let groundIndex = -1, bestGroundDist = Infinity;
   for (let i = 0; i < loopRoadPoints.length; i++) {
     const p = loopRoadPoints[i];
-    const dz = Math.abs(p.z - 40);
+    const dz = Math.abs(p.z - 80);
     if (p.x > 0 && dz < bestGroundDist) { bestGroundDist = dz; groundIndex = i; }
   }
   const groundJunction = loopRoadPoints[groundIndex];

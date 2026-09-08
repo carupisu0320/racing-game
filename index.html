@@ -928,11 +928,13 @@ const highwayPoints = buildElevatedLoop(highwayLoopWaypoints, 12, highwayClearHe
 
 // 一般道路(地上のループ)から高速道路への合流ランプを1か所作る(東側)
 if (loopRoadPoints) {
+  // 乗り口にしたい座標をここで指定する(道路そのものではなく、大体の目安の位置でよい)
+  const rampEntranceTarget = { x: 60, z: 160 };
   let groundIndex = -1, bestGroundDist = Infinity;
   for (let i = 0; i < loopRoadPoints.length; i++) {
     const p = loopRoadPoints[i];
-    const dz = Math.abs(p.z - 160);
-    if (p.x > 0 && dz < bestGroundDist) { bestGroundDist = dz; groundIndex = i; }
+    const d = Math.hypot(p.x - rampEntranceTarget.x, p.z - rampEntranceTarget.z);
+    if (d < bestGroundDist) { bestGroundDist = d; groundIndex = i; }
   }
   const groundJunction = loopRoadPoints[groundIndex];
   // 合流開始地点での道路の向き(接線)を求める

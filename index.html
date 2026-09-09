@@ -19,6 +19,13 @@
     font-size: 14px; pointer-events: none;
     z-index: 10;
   }
+  #radioLabel {
+    position: absolute; top: 34px; left: 10px;
+    font-family: sans-serif; color: #fff;
+    text-shadow: 0 0 4px #000;
+    font-size: 13px; pointer-events: none;
+    z-index: 10;
+  }
   #speedGauge {
     position: absolute; right: 16px; bottom: 16px;
     pointer-events: none;
@@ -36,11 +43,25 @@
     width: 70vw; height: 50vh; z-index: 30; display: none;
     font-family: monospace; font-size: 12px;
   }
+  #mapOverlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(20, 20, 25, 0.75);
+    display: none; z-index: 25;
+    align-items: center; justify-content: center;
+  }
+  #mapOverlay.active { display: flex; }
+  #mapCanvas {
+    background: #d8c9a3;
+    border: 3px solid #fff;
+    border-radius: 8px;
+  }
 </style>
 </head>
 <body>
 <div id="game-root">
-<div id="hud">矢印キー / WASD で運転 ・ ドラッグでマウス視点操作 ・ Cキーで一人称/三人称切り替え ・ Eキーで編集モード(開発者用)</div>
+<div id="hud">矢印キー / WASD で運転 ・ ドラッグでマウス視点操作 ・ Cキーで一人称/三人称切り替え ・ Eキーで編集モード(開発者用) ・ -/;キーでラジオ局切り替え ・ Mキーでマップ ・ Hキーでクラクション ・ Spaceキーでサイドブレーキ(ドリフト)</div>
+<div id="radioLabel"></div>
+<div id="mapOverlay"><canvas id="mapCanvas" width="700" height="700"></canvas></div>
 <canvas id="speedGauge" width="150" height="150"></canvas>
 <div id="editorPanel">
   <b>開発者編集モード(Eキーで終了)</b><br>
@@ -63,6 +84,36 @@ const gameRoot = document.getElementById('game-root');
 
 const scene = new THREE.Scene();
 
+// 車のタイヤの接地判定に使う「実際に運転できる面」のメッシュ一覧。
+// 地形の高さ関数(terrainHeight)だけでは、高架の高速道路やランプのような
+// 「地形とは別に自由な高さを持つ道路」を考慮できず、めり込みの原因になっていた。
+// そこで、実際に描画されているメッシュへ向けて下向きにレイを飛ばし、
+// 本当に立っている面の高さを取得するようにする。
+const groundMeshes = [];
+const groundRaycaster = new THREE.Raycaster();
+groundRaycaster.far = 2000;
+
+// サボテン・岩との当たり判定に使う一覧。{ mesh, x, z, radius } を保持する。
+const cactusObstacles = [];
+const rockObstacles = [];
+
+// 描写距離: マップが広くなっても常に全オブジェクトを描画すると重くなるため、
+// 車から一定距離より遠いサボテンは非表示にして負荷を抑える
+// (岩はInstancedMeshで1回の描画にまとめているため、個別のカリングは不要)
+const DRAW_DISTANCE = 700;
+const DRAW_DISTANCE_SQ = DRAW_DISTANCE * DRAW_DISTANCE;
+let cullFrameCounter = 0;
+function updateDistanceCulling() {
+  // 判定自体もコストなので、毎フレームではなく4フレームに1回だけ行う
+  // (見た目の切り替わりは4フレーム程度の遅れなら気にならない)
+  cullFrameCounter++;
+  if (cullFrameCounter % 4 !== 0) return;
+  for (const obs of cactusObstacles) {
+    const dx = car.position.x - obs.x, dz = car.position.z - obs.z;
+    obs.mesh.visible = (dx * dx + dz * dz) < DRAW_DISTANCE_SQ;
+  }
+}
+
 // マップの表示モード(空や地面の色分けにも使うため、シーン作成直後に定義しておく)
 // スーパーフラットモード: 地形・ビル・木・道路・高速道路をすべて取り除き、何もない平らな地面だけにする(編集モードで一から配置するため)
 // ルート66モード: 砂漠を貫くハイウェイのマップ
@@ -70,10 +121,10 @@ const SUPERFLAT_MODE = false;
 const ROUTE66_MODE = true;
 
 scene.background = new THREE.Color(ROUTE66_MODE ? 0xbfdff0 : 0x87CEEB);
-scene.fog = new THREE.Fog(ROUTE66_MODE ? 0xd8c9a3 : 0x87CEEB, 100, 450);
+scene.fog = new THREE.Fog(ROUTE66_MODE ? 0xd8c9a3 : 0x87CEEB, 250, 1500);
 
 const camera = new THREE.PerspectiveCamera(
-  70, window.innerWidth / window.innerHeight, 0.1, 1000
+  70, window.innerWidth / window.innerHeight, 0.1, 4000
 );
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -236,7 +287,23 @@ const desertMesas = [
   { x: 90, z: -80, radius: 45, height: 18 },
   { x: -110, z: -140, radius: 30, height: 11 },
   { x: 140, z: 100, radius: 40, height: 16 },
-  { x: 30, z: 210, radius: 25, height: 9 }
+  { x: 30, z: 210, radius: 25, height: 9 },
+  { x: -160, z: 320, radius: 50, height: 20 },
+  { x: 200, z: -300, radius: 42, height: 17 },
+  { x: -220, z: -350, radius: 33, height: 13 },
+  { x: 250, z: 380, radius: 38, height: 15 },
+  { x: -350, z: 620, radius: 55, height: 22 },
+  { x: 400, z: -650, radius: 48, height: 19 },
+  { x: -420, z: -720, radius: 40, height: 16 },
+  { x: 380, z: 780, radius: 46, height: 18 },
+  { x: -80, z: 880, radius: 35, height: 14 },
+  { x: 60, z: -880, radius: 38, height: 15 },
+  { x: -600, z: 1300, radius: 60, height: 24 },
+  { x: 650, z: -1350, radius: 52, height: 21 },
+  { x: -700, z: -1500, radius: 45, height: 18 },
+  { x: 620, z: 1550, radius: 50, height: 20 },
+  { x: -150, z: 1750, radius: 40, height: 16 },
+  { x: 180, z: -1800, radius: 42, height: 17 }
 ];
 
 // 編集モードで配置した丘(なだらかな盛り上がり)。{x, z, radius, height} の配列。
@@ -282,8 +349,8 @@ function terrainHeight(x, z) {
 // 車もこの分だけ高さを合わせて、タイヤが道路にめり込まないようにする
 const ROAD_SURFACE_OFFSET = 0.3;
 
-const groundSize = 500;
-const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 150, 150);
+const groundSize = 4000;
+const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 140, 140);
 groundGeo.rotateX(-Math.PI / 2);
 
 // 地形に起伏をつける(なめらかな高さ関数を使用)
@@ -299,6 +366,7 @@ const groundMat = new THREE.MeshStandardMaterial({ color: ROUTE66_MODE ? 0xc7a77
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.receiveShadow = true;
 scene.add(ground);
+groundMeshes.push(ground);
 
 // 地面に厚みを持たせるための土台(地形の一番低い場所より下に大きな箱を敷く)
 const groundSlabMat = new THREE.MeshStandardMaterial({ color: 0x3a3025, roughness: 0.9 });
@@ -388,9 +456,8 @@ function buildRibbonFromPoints(pts, halfWidth, heightOffset, material) {
   const mesh = new THREE.Mesh(geo, material);
   mesh.receiveShadow = true;
   scene.add(mesh);
+  groundMeshes.push(mesh);
 }
-
-// ウェイポイントをなめらかなスプライン曲線でつなぎ、道路・白線・中央の破線を作る
 function buildRoadFromWaypoints(waypoints, width) {
   const controlPoints = waypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
   const curve = new THREE.CatmullRomCurve3(controlPoints, true, 'catmullrom', 0.5);
@@ -470,6 +537,7 @@ function buildOpenRibbon(pts, halfWidth, heightOffset, material) {
   const mesh = new THREE.Mesh(geo, material || roadMat);
   mesh.receiveShadow = true;
   scene.add(mesh);
+  groundMeshes.push(mesh);
   return mesh;
 }
 
@@ -652,6 +720,7 @@ function buildCurvedRamp(waypoints, width, clearHeightStart, clearHeightEnd, mat
   deck.receiveShadow = true;
   deck.castShadow = true;
   scene.add(deck);
+  groundMeshes.push(deck);
 
   const railMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.4, roughness: 0.5 });
   [-1, 1].forEach((side) => {
@@ -731,6 +800,7 @@ function buildElevatedLoop(waypoints, width, clearHeight, roadMaterial, pillarMa
   deck.receiveShadow = true;
   deck.castShadow = true;
   scene.add(deck);
+  groundMeshes.push(deck);
 
   // ガードレール
   const railMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.4, roughness: 0.5 });
@@ -876,32 +946,51 @@ if (ROUTE66_MODE) {
 
   // 一直線に砂漠を貫くハイウェイ(南北方向)
   const hwyPts = [];
-  for (let z = -260; z <= 260; z += 10) {
+  for (let z = -1920; z <= 1920; z += 10) {
     hwyPts.push(new THREE.Vector3(0, 0, z));
   }
-  buildRibbonFromPoints(hwyPts, 4, ROAD_SURFACE_OFFSET, roadMat);
+  const desertRoadHalfWidth = 7;
+  buildOpenRibbon(hwyPts, desertRoadHalfWidth, ROAD_SURFACE_OFFSET, roadMat);
   // 左右の白線
   const desertLineHalf = 0.12;
   [-1, 1].forEach((side) => {
-    const offsetPts = hwyPts.map((p) => new THREE.Vector3(p.x + (4 - 0.35) * side, 0, p.z));
-    buildRibbonFromPoints(offsetPts, desertLineHalf, ROAD_SURFACE_OFFSET + 0.02, roadLineMat);
+    const offsetPts = hwyPts.map((p) => new THREE.Vector3(p.x + (desertRoadHalfWidth - 0.35) * side, 0, p.z));
+    buildOpenRibbon(offsetPts, desertLineHalf, ROAD_SURFACE_OFFSET + 0.02, roadLineMat);
   });
-  // 中央の黄色い破線(ルート66らしい黄色センターライン)
+  // 中央の黄色い破線(ルート66らしい黄色センターライン)。
+  // 破線1本ごとにメッシュを作ると本数分の描画コールが発生するため、
+  // すべての破線を1つのジオメトリにまとめて1回の描画で済むようにする。
   const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xe8c23a });
-  for (let z = -258; z <= 258; z += 6) {
-    const dashGeo = new THREE.PlaneGeometry(0.25, 3);
-    dashGeo.rotateX(-Math.PI / 2);
-    const dash = new THREE.Mesh(dashGeo, yellowLineMat);
-    dash.position.set(0, terrainHeight(0, z) + ROAD_SURFACE_OFFSET + 0.02, z);
-    scene.add(dash);
+  {
+    const dashPositions = [];
+    const dashIndices = [];
+    const halfW = 0.125, halfL = 1.5;
+    let vi = 0;
+    for (let z = -1918; z <= 1918; z += 6) {
+      const y = terrainHeight(0, z) + ROAD_SURFACE_OFFSET + 0.02;
+      dashPositions.push(
+        -halfW, y, z - halfL,
+         halfW, y, z - halfL,
+         halfW, y, z + halfL,
+        -halfW, y, z + halfL
+      );
+      dashIndices.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3);
+      vi += 4;
+    }
+    const dashGeo = new THREE.BufferGeometry();
+    dashGeo.setAttribute('position', new THREE.Float32BufferAttribute(dashPositions, 3));
+    dashGeo.setIndex(dashIndices);
+    dashGeo.computeVertexNormals();
+    const dashMesh = new THREE.Mesh(dashGeo, yellowLineMat);
+    scene.add(dashMesh);
   }
 
   // サボテン(道の両脇に点在)
   const cactusMat = new THREE.MeshStandardMaterial({ color: 0x3f7d4a, roughness: 0.8 });
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < 260; i++) {
     const side = Math.random() < 0.5 ? -1 : 1;
-    const x = side * (8 + Math.random() * 60);
-    const z = -250 + Math.random() * 500;
+    const x = side * (11 + Math.random() * 90);
+    const z = -1900 + Math.random() * 3800;
     const y = terrainHeight(x, z);
     const cactus = new THREE.Group();
     const trunkH = 2 + Math.random() * 2.5;
@@ -919,24 +1008,41 @@ if (ROUTE66_MODE) {
       });
     }
     cactus.position.set(x, y, z);
-    cactus.castShadow = true;
+    cactus.castShadow = false;
     scene.add(cactus);
+    cactusObstacles.push({ mesh: cactus, x, z, radius: 0.6 });
   }
 
-  // 岩(小さめの転石を点在させる)
+  // 岩(小さめの転石を点在させる)。個別メッシュではなくInstancedMeshにまとめることで、
+  // 何百個あっても描画コールが1回で済むようにする(岩は壊れず常に存在するため、
+  // サボテンのような個別の距離カリングは不要)
   const smallRockMat = new THREE.MeshStandardMaterial({ color: 0x8a6a52, roughness: 1.0 });
-  for (let i = 0; i < 30; i++) {
-    const x = (Math.random() - 0.5) * 400;
-    const z = -250 + Math.random() * 500;
-    if (Math.abs(x) < 6) continue; // 道の上を避ける
+  const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+  const rockCount = 180;
+  const rockMesh = new THREE.InstancedMesh(rockGeo, smallRockMat, rockCount);
+  rockMesh.castShadow = false;
+  rockMesh.receiveShadow = true;
+  const rockDummy = new THREE.Object3D();
+  let rocksPlaced = 0;
+  let rockAttempts = 0;
+  while (rocksPlaced < rockCount && rockAttempts < rockCount * 20) {
+    rockAttempts++;
+    const x = (Math.random() - 0.5) * 2800;
+    const z = -1900 + Math.random() * 3800;
+    if (Math.abs(x) < 9) continue; // 道の上を避ける
     const y = terrainHeight(x, z);
     const size = 0.6 + Math.random() * 1.2;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(size, 0), smallRockMat);
-    rock.position.set(x, y + size * 0.4, z);
-    rock.rotation.set(Math.random(), Math.random(), Math.random());
-    rock.castShadow = true;
-    scene.add(rock);
+    rockDummy.position.set(x, y + size * 0.4, z);
+    rockDummy.rotation.set(Math.random(), Math.random(), Math.random());
+    rockDummy.scale.setScalar(size);
+    rockDummy.updateMatrix();
+    rockMesh.setMatrixAt(rocksPlaced, rockDummy.matrix);
+    rockObstacles.push({ x, z, radius: size * 0.9 });
+    rocksPlaced++;
   }
+  rockMesh.count = rocksPlaced;
+  rockMesh.instanceMatrix.needsUpdate = true;
+  scene.add(rockMesh);
 
   // 簡易的なガソリンスタンド(ブランド表記なしのオリジナルデザイン)
   function buildGasStation(x, z) {
@@ -1560,14 +1666,75 @@ function isPressed(...names) {
 // ==========================================================
 // 車の物理(簡易)
 // ==========================================================
+// ==========================================================
+// ドリフト時の煙(タイヤスモーク)
+// ==========================================================
+function createSmokeTexture() {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(235,235,235,0.85)');
+  gradient.addColorStop(0.5, 'rgba(200,200,200,0.4)');
+  gradient.addColorStop(1, 'rgba(200,200,200,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
+const smokeTexture = createSmokeTexture();
+const smokeParticles = [];
+
+function spawnSmoke(x, y, z) {
+  const mat = new THREE.SpriteMaterial({
+    map: smokeTexture, transparent: true, opacity: 0.55, depthWrite: false
+  });
+  const sprite = new THREE.Sprite(mat);
+  const startScale = 0.4 + Math.random() * 0.2;
+  sprite.position.set(x + (Math.random() - 0.5) * 0.2, y, z + (Math.random() - 0.5) * 0.2);
+  sprite.scale.set(startScale, startScale, startScale);
+  scene.add(sprite);
+  smokeParticles.push({
+    sprite,
+    life: 0,
+    maxLife: 0.5 + Math.random() * 0.4,
+    startScale,
+    vx: (Math.random() - 0.5) * 0.8,
+    vy: 0.6 + Math.random() * 0.4,
+    vz: (Math.random() - 0.5) * 0.8
+  });
+}
+
+function updateSmoke(dt) {
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const p = smokeParticles[i];
+    p.life += dt;
+    const t = p.life / p.maxLife;
+    if (t >= 1) {
+      scene.remove(p.sprite);
+      p.sprite.material.dispose();
+      smokeParticles.splice(i, 1);
+      continue;
+    }
+    p.sprite.position.x += p.vx * dt;
+    p.sprite.position.y += p.vy * dt;
+    p.sprite.position.z += p.vz * dt;
+    const scale = p.startScale * (1 + t * 2.2);
+    p.sprite.scale.set(scale, scale, scale);
+    p.sprite.material.opacity = 0.55 * (1 - t);
+  }
+}
+
 const carState = {
   speed: 0,
+  velocity: new THREE.Vector3(), // 実際に車体が動く方向・速さ(向いている方向とはズレることがある=ドリフト)
   maxSpeed: 45,
   maxReverseSpeed: -15,
   acceleration: 18,
   braking: 30,
   friction: 8,
-  turnSpeed: 2.2,
+  turnSpeed: 3.8,
   pitch: 0,
   roll: 0
 };
@@ -1583,6 +1750,7 @@ function updateCar(dt) {
   const brakeInput = isPressed('arrowdown', 's');
   const leftInput = isPressed('arrowleft', 'a');
   const rightInput = isPressed('arrowright', 'd');
+  const handbrakeInput = isPressed(' ');
 
   // ハンドルの見た目の回転(左右キーに応じて回し、離すと中央に戻る)
   if (leftInput && !rightInput) {
@@ -1606,16 +1774,62 @@ function updateCar(dt) {
 
   carState.speed = Math.max(carState.maxReverseSpeed, Math.min(carState.maxSpeed, carState.speed));
 
+  // サイドブレーキ: 少し減速しつつ、後輪のグリップを抜いてドリフトのきっかけを作る
+  if (handbrakeInput) {
+    carState.speed *= Math.max(0, 1 - 1.2 * dt);
+  }
+
   // ある程度速度が乗っていないと曲がれないようにする(簡易ハンドリング)
-  const turnFactor = Math.min(1, Math.abs(carState.speed) / 8);
+  // サイドブレーキ中はより鋭く曲がれる(オーバーステア)
+  const turnBoost = handbrakeInput ? 1.7 : 1.0;
+  const turnFactor = Math.min(1, Math.abs(carState.speed) / 2.5);
   if (Math.abs(carState.speed) > 0.05) {
     const dir = carState.speed > 0 ? 1 : -1;
-    if (leftInput) car.rotation.y += carState.turnSpeed * dt * turnFactor * dir;
-    if (rightInput) car.rotation.y -= carState.turnSpeed * dt * turnFactor * dir;
+    if (leftInput) car.rotation.y += carState.turnSpeed * turnBoost * dt * turnFactor * dir;
+    if (rightInput) car.rotation.y -= carState.turnSpeed * turnBoost * dt * turnFactor * dir;
   }
 
   const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(car.quaternion);
-  car.position.addScaledVector(forward, carState.speed * dt);
+  const desiredVelocity = forward.clone().multiplyScalar(carState.speed);
+
+  // グリップ: 通常はタイヤの向きにすぐ速度が追従するが、サイドブレーキ中はグリップが
+  // 大きく下がり、実際に進む向き(velocity)が車体の向きから遅れてズレる=ドリフトする
+  const gripRate = handbrakeInput ? 1.6 : 18;
+  const gripBlend = 1 - Math.exp(-gripRate * dt);
+  carState.velocity.lerp(desiredVelocity, gripBlend);
+
+  car.position.addScaledVector(carState.velocity, dt);
+
+  // サボテン・岩との簡易的な当たり判定(車を単純な円とみなして判定する)
+  const carCollisionRadius = 1.7;
+  for (let i = cactusObstacles.length - 1; i >= 0; i--) {
+    const obs = cactusObstacles[i];
+    const dx = car.position.x - obs.x, dz = car.position.z - obs.z;
+    const dist = Math.hypot(dx, dz);
+    const minDist = carCollisionRadius + obs.radius;
+    if (dist < minDist) {
+      // サボテンは当たったら消えるが、なぎ倒す反動として少しだけ車を押し戻す
+      const nx = dist > 0.0001 ? dx / dist : 1, nz = dist > 0.0001 ? dz / dist : 0;
+      const push = (minDist - dist) * 0.3; // 岩より弱めの押し戻し
+      car.position.x += nx * push;
+      car.position.z += nz * push;
+      scene.remove(obs.mesh);
+      cactusObstacles.splice(i, 1);
+    }
+  }
+  for (const obs of rockObstacles) {
+    const dx = car.position.x - obs.x, dz = car.position.z - obs.z;
+    const dist = Math.hypot(dx, dz);
+    const minDist = carCollisionRadius + obs.radius;
+    if (dist < minDist) {
+      // 岩は硬い障害物として扱い、めり込んだ分だけ車を押し戻して減速させる
+      const nx = dist > 0.0001 ? dx / dist : 1, nz = dist > 0.0001 ? dz / dist : 0;
+      const push = minDist - dist;
+      car.position.x += nx * push;
+      car.position.z += nz * push;
+      carState.speed *= 0.4;
+    }
+  }
 
   // 4輪の実際の位置(ホイールベース・トレッド幅)で地形の高さを測り、
   // それをもとに車の高さと前後・左右の傾きを決める(タイヤが確実に接地するように)
@@ -1628,13 +1842,23 @@ function updateCar(dt) {
   function wheelGroundHeight(sideSign, frontSign) {
     const wx = car.position.x + rx * halfTrack * sideSign + fx * halfWheelbase * frontSign;
     const wz = car.position.z + rz * halfTrack * sideSign + fz * halfWheelbase * frontSign;
-    return getGroundHeight(wx, wz) + ROAD_SURFACE_OFFSET;
+    return getGroundHeight(wx, wz);
   }
 
   const hFL = wheelGroundHeight(-1, 1);
   const hFR = wheelGroundHeight(1, 1);
   const hRL = wheelGroundHeight(-1, -1);
   const hRR = wheelGroundHeight(1, -1);
+
+  // ドリフト中(サイドブレーキ+ある程度の速度)は、後輪の位置から煙を出す
+  if (handbrakeInput && Math.abs(carState.speed) > 3) {
+    const rlx = car.position.x + rx * halfTrack * -1 + fx * halfWheelbase * -1;
+    const rlz = car.position.z + rz * halfTrack * -1 + fz * halfWheelbase * -1;
+    const rrx = car.position.x + rx * halfTrack * 1 + fx * halfWheelbase * -1;
+    const rrz = car.position.z + rz * halfTrack * 1 + fz * halfWheelbase * -1;
+    if (Math.random() < 0.9) spawnSmoke(rlx, hRL + 0.3, rlz);
+    if (Math.random() < 0.9) spawnSmoke(rrx, hRR + 0.3, rrz);
+  }
 
   // 車の高さは4輪の平均の接地面に合わせる
   car.position.y = (hFL + hFR + hRL + hRR) / 4;
@@ -1654,10 +1878,16 @@ function updateCar(dt) {
   car.rotation.z = carState.roll;
 
   updateSpeedDisplay();
+  updateDistanceCulling();
 }
 
+// タイヤの真上からレイを飛ばし、実際に描画されている道路・地面メッシュのうち
+// 一番高い位置にある面を「接地面」として使う(高架のランプや高速道路もこれで正しく判定できる)
 function getGroundHeight(x, z) {
-  return terrainHeight(x, z);
+  groundRaycaster.set(new THREE.Vector3(x, 1000, z), new THREE.Vector3(0, -1, 0));
+  const hits = groundRaycaster.intersectObjects(groundMeshes, false);
+  if (hits.length > 0) return hits[0].point.y;
+  return terrainHeight(x, z); // 万一メッシュが見つからない場合のフォールバック
 }
 
 // ==========================================================
@@ -1719,6 +1949,123 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// ==========================================================
+// ラジオ
+// ==========================================================
+// GitHub側の audio フォルダに radio1.mp3, radio2.mp3, radio3.mp3 ... という名前で
+// 音源を置くと、この一覧の並び順で選局できるようになる。
+// 曲を増やしたり名前を変えたりしたときは、下の配列をそれに合わせて書き換える。
+const radioLabel = document.getElementById('radioLabel');
+const radioStations = [
+  { name: 'ラジオ 1', file: 'audio/radio1.mp3' },
+  { name: 'ラジオ 2', file: 'audio/radio2.mp3' },
+  { name: 'ラジオ 3', file: 'audio/radio3.mp3' }
+];
+let radioIndex = -1; // まだ何も再生していない状態。最初に「;」を押すと1局目から始まる
+const radioAudio = new Audio();
+radioAudio.loop = true;
+radioAudio.volume = 0.5;
+
+function playRadioStation(index) {
+  radioIndex = ((index % radioStations.length) + radioStations.length) % radioStations.length;
+  const station = radioStations[radioIndex];
+  radioAudio.src = station.file;
+  radioAudio.play().catch(() => {
+    // ブラウザの自動再生制限で失敗した場合は、次に「-」「;」キーを押したときに再生される
+  });
+  if (radioLabel) radioLabel.textContent = `♪ ${station.name}`;
+}
+
+window.addEventListener('keydown', (e) => {
+  if (editMode) return;
+  if (e.key === '-') {
+    playRadioStation(radioIndex - 1);
+  } else if (e.key === ';') {
+    playRadioStation(radioIndex + 1);
+  }
+});
+
+// ==========================================================
+// クラクション(Hキー)
+// ==========================================================
+// ラジオと同じく、audioフォルダに horn.mp3 という名前で音源を置くと鳴るようになる。
+// ファイル名を変える場合は下のパスを書き換える。
+const hornAudio = new Audio('audio/horn.mp3');
+hornAudio.volume = 0.9;
+
+window.addEventListener('keydown', (e) => {
+  if (editMode) return;
+  if (e.key.toLowerCase() === 'h') {
+    hornAudio.currentTime = 0;
+    hornAudio.play().catch(() => {});
+  }
+});
+
+// ==========================================================
+// マップ(Mキーで開閉)
+// ==========================================================
+const mapOverlay = document.getElementById('mapOverlay');
+const mapCanvas = document.getElementById('mapCanvas');
+const mapCtx = mapCanvas.getContext('2d');
+let mapOpen = false;
+
+window.addEventListener('keydown', (e) => {
+  if (editMode) return;
+  if (e.key.toLowerCase() === 'm') {
+    mapOpen = !mapOpen;
+    mapOverlay.classList.toggle('active', mapOpen);
+  }
+});
+
+function drawMap() {
+  const w = mapCanvas.width, h = mapCanvas.height;
+  mapCtx.fillStyle = '#d8c9a3';
+  mapCtx.fillRect(0, 0, w, h);
+
+  // ワールド座標をマップのキャンバス座標に変換する(全体が収まるスケールにする)
+  const worldHalf = groundSize / 2;
+  const scale = (Math.min(w, h) * 0.45) / worldHalf;
+  const toMap = (x, z) => ({ mx: w / 2 + x * scale, mz: h / 2 + z * scale });
+
+  // メサ(岩山)
+  mapCtx.fillStyle = '#a97c50';
+  desertMesas.forEach((mesa) => {
+    const p = toMap(mesa.x, mesa.z);
+    mapCtx.beginPath();
+    mapCtx.arc(p.mx, p.mz, Math.max(2, mesa.radius * scale), 0, Math.PI * 2);
+    mapCtx.fill();
+  });
+
+  // 道路(ルート66モードは南北にまっすぐ1本)
+  if (ROUTE66_MODE) {
+    const p1 = toMap(0, -worldHalf);
+    const p2 = toMap(0, worldHalf);
+    mapCtx.strokeStyle = '#555';
+    mapCtx.lineWidth = 3;
+    mapCtx.beginPath();
+    mapCtx.moveTo(p1.mx, p1.mz);
+    mapCtx.lineTo(p2.mx, p2.mz);
+    mapCtx.stroke();
+  }
+
+  // 車(現在位置と向き)
+  const carP = toMap(car.position.x, car.position.z);
+  const yaw = car.rotation.y;
+  const fx = Math.sin(yaw), fz = Math.cos(yaw); // 前方向
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw); // 右方向
+  const size = 11;
+  const tip = { x: carP.mx + fx * size, y: carP.mz + fz * size };
+  const left = { x: carP.mx - fx * size * 0.6 + rx * size * 0.6, y: carP.mz - fz * size * 0.6 + rz * size * 0.6 };
+  const right = { x: carP.mx - fx * size * 0.6 - rx * size * 0.6, y: carP.mz - fz * size * 0.6 - rz * size * 0.6 };
+  mapCtx.fillStyle = '#e04040';
+  mapCtx.beginPath();
+  mapCtx.moveTo(tip.x, tip.y);
+  mapCtx.lineTo(left.x, left.y);
+  mapCtx.lineTo(right.x, right.y);
+  mapCtx.closePath();
+  mapCtx.fill();
+}
+
 function updateCamera(dt) {
   if (cameraMode === 'firstPerson') {
     updateFirstPersonCamera(dt);
@@ -1775,6 +2122,8 @@ function animate() {
 
   updateCar(dt);
   updateCamera(dt);
+  updateSmoke(dt);
+  if (mapOpen) drawMap();
 
   // バックミラーの描画
   updateMirrorCamera();
@@ -1900,16 +2249,21 @@ function undoLastEditObject() {
   if (editObjects.length === 0) return;
   const last = editObjects.pop();
   const mesh = editObjectMeshes.pop();
+  function removeMesh(m) {
+    scene.remove(m);
+    const idx = groundMeshes.indexOf(m);
+    if (idx !== -1) groundMeshes.splice(idx, 1);
+  }
   if (last.type === 'hill') {
     editorHills.pop();
     regenerateGroundMesh();
   } else if (last.type === 'road') {
-    if (mesh) scene.remove(mesh); // 直前の区間を消す
+    if (mesh) removeMesh(mesh); // 直前の区間を消す
     // 道路の連続配置を1つ前の点に戻す(その前も道路の点であれば)
     const prevRoad = [...editObjects].reverse().find((o) => o.type === 'road');
     editorRoadLastPoint = prevRoad ? { x: prevRoad.x, z: prevRoad.z } : null;
   } else if (mesh) {
-    scene.remove(mesh);
+    removeMesh(mesh);
   }
 }
 

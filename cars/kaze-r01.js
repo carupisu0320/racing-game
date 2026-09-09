@@ -81,8 +81,7 @@ noseBack.castShadow = true;
 car.add(noseBack);
 
 const noseFront = new THREE.Mesh(createChamferedBox(1.75, 0.2, 0.55, 0.05), paintMat);
-noseFront.position.set(0, groundClearance + 0.27, halfLen - 0.35);
-noseFront.rotation.x = -0.12; // 先端が少し下がるように傾ける
+noseFront.position.set(0, groundClearance + 0.24, halfLen - 0.35);
 noseFront.castShadow = true;
 car.add(noseFront);
 
@@ -116,6 +115,22 @@ car.add(windshield);
   pillar.position.set(x, groundClearance + 0.78, 0.95);
   pillar.rotation.x = -0.62;
   car.add(pillar);
+});
+
+// ドアのシャットライン(パネルの継ぎ目の溝)とドアハンドル
+// (これが無いと車体側面がのっぺりして「ドアが無い」ように見えてしまう)
+[-1, 1].forEach((sign) => {
+  const frontShutline = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.3, 0.02), trimMat);
+  frontShutline.position.set(sign * 1.005, groundClearance + 0.4, 0.75);
+  car.add(frontShutline);
+
+  const rearShutline = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.3, 0.02), trimMat);
+  rearShutline.position.set(sign * 1.005, groundClearance + 0.4, -0.55);
+  car.add(rearShutline);
+
+  const doorHandle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.16), trimMat);
+  doorHandle.position.set(sign * 1.01, groundClearance + 0.56, 0.15);
+  car.add(doorHandle);
 });
 
 // エンジンフード(ミッドシップなので、キャビン後方が盛り上がったエンジンデッキになる)
@@ -210,7 +225,7 @@ const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, metalness: 0.
 const rimMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, metalness: 0.85, roughness: 0.2 });
 const spokeMat = new THREE.MeshStandardMaterial({ color: 0x262626, metalness: 0.8, roughness: 0.25 });
 
-function buildWheel(radius, width, rimRadius) {
+function buildWheel(radius, width, rimRadius, sideSign) {
   const wheelGroup = new THREE.Group();
   const tire = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 22), wheelMat);
   tire.rotation.z = Math.PI / 2;
@@ -230,6 +245,7 @@ function buildWheel(radius, width, rimRadius) {
 
   const caliper = new THREE.Mesh(new THREE.CylinderGeometry(rimRadius * 0.62, rimRadius * 0.62, 0.09, 12), calipeMat);
   caliper.rotation.z = Math.PI / 2;
+  caliper.position.x = sideSign > 0 ? -0.09 : 0.09; // 車体内側にオフセットし、リムと重ならないようにする
   wheelGroup.add(caliper);
   return wheelGroup;
 }
@@ -243,7 +259,7 @@ const wheelSpecs = [
   { x: halfTrackRear, z: -halfWheelbase, radius: rearWheelRadius, width: rearWheelWidth }
 ];
 wheelSpecs.forEach((spec) => {
-  const wheelGroup = buildWheel(spec.radius, spec.width, spec.radius * 0.62);
+  const wheelGroup = buildWheel(spec.radius, spec.width, spec.radius * 0.62, spec.x);
   wheelGroup.position.set(spec.x, spec.radius, spec.z);
   car.add(wheelGroup);
 });

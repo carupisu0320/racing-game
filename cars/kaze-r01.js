@@ -49,15 +49,19 @@ const rearAxleZ = halfLen - 3.77;  // = -1.51
 // ----------------------------------------------------------
 // ロフト(断面を繋いで滑らかな曲面を作る)のための共通関数
 // ----------------------------------------------------------
-// stations: [{ z, halfWidth, bottomY, topY }, ...] を鼻→テールの順で並べる
-// crossSection: [[fx, fy], ...] 断面形状(fx: -1〜1で左右、fy: 0〜1で下→上)を反時計回りに一周ぶん
-function buildLoft(stations, crossSection, material) {
+// stations: [{ z, halfWidth, bottomY, topY, crossSection? }, ...] を鼻→テールの順で並べる
+// defaultCrossSection: [[fx, fy], ...] 断面形状(fx: -1〜1で左右、fy: 0〜1で下→上)を反時計回りに一周ぶん
+// station.crossSection を指定すると、そのステーションだけ別の断面形状(点数は同じ)を使える。
+// これにより、ホイール部分だけ「タイヤの高さは控えめ・タイヤ上部だけ大きく張り出す」
+// 断面に切り替えて、フェンダーアーチをボディと1枚につなげることができる。
+function buildLoft(stations, defaultCrossSection, material) {
   const positions = [];
   const uvs = [];
   const ringCount = stations.length;
-  const pointsPerRing = crossSection.length;
+  const pointsPerRing = defaultCrossSection.length;
 
   stations.forEach((st, si) => {
+    const crossSection = st.crossSection || defaultCrossSection;
     crossSection.forEach(([fx, fy], pi) => {
       const x = fx * st.halfWidth;
       const y = st.bottomY + fy * (st.topY - st.bottomY);
@@ -97,48 +101,50 @@ const bodyCrossSection = [
   [-0.92, 0.15], [-0.55, 0.02]
 ];
 
+// ホイールアーチ用の断面(点数はbodyCrossSectionと同じ12点で対応させる)。
+// 実車のホイールアーチと同じ考え方で、
+// ・タイヤの真横(中央の高さ付近)は控えめな幅にして開口させる
+// ・タイヤの上側だけ大きく張り出させて覆う
+// という形にすることで、ボディと1枚のまま自然なフェンダーになる。
+const fenderCrossSection = [
+  [0.0, 0.0],                          // 底面中央
+  [0.55, 0.02], [0.60, 0.20],          // ロッカー〜タイヤ下側は控えめ
+  [0.55, 0.42],                        // タイヤの中央高さ(あえて絞って真横を開口させる)
+  [0.72, 0.62], [1.0, 0.82],           // タイヤ上側で大きく張り出す(フェンダーのピーク)
+  [0.0, 1.0],                          // 上面中央(ボディにつながる)
+  [-1.0, 0.82], [-0.72, 0.62],
+  [-0.55, 0.42],
+  [-0.60, 0.20], [-0.55, 0.02]
+];
+
 // ----------------------------------------------------------
 // 1. 車体本体(ロワーボディ)のロフト
 //    鼻先 → フロントフェンダー(前輪位置で最大幅) → ドア(くびれ) →
 //    リアフェンダー(後輪位置で最大幅) → テール、まで1本の面でつなぐ
 // ----------------------------------------------------------
 const gc = groundClearance;
-// ボディ本体はホイールの内側(タイヤ幅の内側)に収まる幅に抑える。
-// フェンダーの「盛り上がり」自体は、この後で追加するアーチ状の
-// 別パーツ(タイヤの上側だけを覆う)で表現し、タイヤの真横は
-// ボディでふさがない(実車のホイールアーチと同じ考え方)。
+// ボディ本体は、ホイール付近だけ断面を fenderCrossSection に切り替えることで
+// 「タイヤの真横は控えめ(開口)・タイヤ上部だけ大きく張り出す」形状を、
+// 別パーツを足すのではなくボディと1枚のままのフェンダーとして表現する。
+// フェンダーのピーク高さは、タイヤ直径(前0.668m/後0.692m)を確実に覆う値にしている。
 const bodyStations = [
   { z: halfLen,            halfWidth: 0.10, bottomY: gc, topY: gc + 0.30 }, // 鼻先端(尖らせる)
   { z: halfLen - 0.30,     halfWidth: 0.62, bottomY: gc, topY: gc + 0.34 }, // フロントバンパー
   { z: halfLen - 0.68,     halfWidth: 0.78, bottomY: gc, topY: gc + 0.42 }, // ボンネット付け根
-  { z: frontAxleZ + 0.34,  halfWidth: 0.72, bottomY: gc, topY: gc + 0.46 }, // フロントフェンダー手前
-  { z: frontAxleZ,         halfWidth: 0.68, bottomY: gc, topY: gc + 0.5 },  // フロントホイール位置(タイヤより内側)
-  { z: frontAxleZ - 0.34,  halfWidth: 0.72, bottomY: gc, topY: gc + 0.48 }, // フロントフェンダー奥
+  { z: frontAxleZ + 0.34,  halfWidth: 0.80, bottomY: gc, topY: gc + 0.60, crossSection: fenderCrossSection }, // フロントフェンダー・立ち上がり
+  { z: frontAxleZ,         halfWidth: 0.99, bottomY: gc, topY: gc + 0.80, crossSection: fenderCrossSection }, // フロントフェンダー・ピーク(タイヤを覆う)
+  { z: frontAxleZ - 0.34,  halfWidth: 0.80, bottomY: gc, topY: gc + 0.58, crossSection: fenderCrossSection }, // フロントフェンダー・立ち下がり
   { z: 0.75,               halfWidth: 0.74, bottomY: gc, topY: gc + 0.60 }, // カウル/フロントガラス基部
   { z: 0.10,               halfWidth: 0.82, bottomY: gc, topY: gc + 0.54 }, // ドア中央(くびれ)
   { z: -0.55,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.56 }, // サイドインテーク付近
-  { z: rearAxleZ + 0.36,   halfWidth: 0.74, bottomY: gc, topY: gc + 0.5 },  // リアフェンダー手前
-  { z: rearAxleZ,          halfWidth: 0.70, bottomY: gc, topY: gc + 0.52 }, // リアホイール位置(タイヤより内側)
-  { z: rearAxleZ - 0.36,   halfWidth: 0.74, bottomY: gc, topY: gc + 0.5 },  // リアフェンダー奥
+  { z: rearAxleZ + 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.62, crossSection: fenderCrossSection }, // リアフェンダー・立ち上がり
+  { z: rearAxleZ,          halfWidth: 0.99, bottomY: gc, topY: gc + 0.84, crossSection: fenderCrossSection }, // リアフェンダー・ピーク(フロントより大きく)
+  { z: rearAxleZ - 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.60, crossSection: fenderCrossSection }, // リアフェンダー・立ち下がり
   { z: -1.95,              halfWidth: 0.60, bottomY: gc, topY: gc + 0.46 }, // リアハンチ
   { z: -halfLen,           halfWidth: 0.40, bottomY: gc, topY: gc + 0.42 }  // テールエンド
 ];
 const bodyLoft = buildLoft(bodyStations, bodyCrossSection, paintMat);
 car.add(bodyLoft);
-
-// フェンダーアーチ(タイヤの上側だけを覆う、太い円弧状の縁)。
-// タイヤの真横は覆わないので、真横から見てもタイヤが隠れたり
-// ボディにめり込んだりせず、上からしっかり張り出して見える。
-function buildFenderArch(wheelRadius, tubeRadius, centerX, centerZ) {
-  const arcAngle = Math.PI * 1.05; // 下側(接地側)を大きく開けた円弧
-  const geo = new THREE.TorusGeometry(wheelRadius + tubeRadius * 0.7, tubeRadius, 10, 24, arcAngle);
-  const arch = new THREE.Mesh(geo, paintMat);
-  arch.rotation.y = Math.PI / 2; // ホイールと同じ向き(X軸を中心にした円)に合わせる
-  arch.rotation.x = Math.PI / 2 + (Math.PI * 2 - arcAngle) / 2; // 円弧の開口部を真下に向ける
-  arch.position.set(centerX, wheelRadius, centerZ);
-  arch.castShadow = true;
-  return arch;
-}
 
 // ----------------------------------------------------------
 // 2. キャビン(ガラス+ルーフ)のロフト。ロワーボディの上に重ねる
@@ -344,9 +350,6 @@ wheelSpecs.forEach((spec) => {
   const wheelGroup = buildWheel(spec.radius, spec.width, spec.radius * 0.62, spec.disc, spec.caliper, spec.x);
   wheelGroup.position.set(spec.x, spec.radius, spec.z);
   car.add(wheelGroup);
-
-  const arch = buildFenderArch(spec.radius, 0.11, spec.x, spec.z);
-  car.add(arch);
 });
 
 // ==========================================================

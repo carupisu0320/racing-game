@@ -103,20 +103,42 @@ const bodyCrossSection = [
 //    リアフェンダー(後輪位置で最大幅) → テール、まで1本の面でつなぐ
 // ----------------------------------------------------------
 const gc = groundClearance;
+// ボディ本体はホイールの内側(タイヤ幅の内側)に収まる幅に抑える。
+// フェンダーの「盛り上がり」自体は、この後で追加するアーチ状の
+// 別パーツ(タイヤの上側だけを覆う)で表現し、タイヤの真横は
+// ボディでふさがない(実車のホイールアーチと同じ考え方)。
 const bodyStations = [
-  { z: halfLen,        halfWidth: 0.12, bottomY: gc, topY: gc + 0.30 }, // 鼻先端
-  { z: halfLen - 0.35, halfWidth: 0.70, bottomY: gc, topY: gc + 0.34 }, // フロントバンパー
-  { z: halfLen - 0.75, halfWidth: 0.88, bottomY: gc, topY: gc + 0.40 }, // ボンネット中間
-  { z: frontAxleZ + 0.05, halfWidth: 0.99, bottomY: gc, topY: gc + 0.50 }, // フロントフェンダー(最大幅)
-  { z: 0.75,           halfWidth: 0.78, bottomY: gc, topY: gc + 0.60 }, // カウル/フロントガラス基部
-  { z: 0.10,           halfWidth: 0.90, bottomY: gc, topY: gc + 0.54 }, // ドア中央(くびれ)
-  { z: -0.70,          halfWidth: 0.94, bottomY: gc, topY: gc + 0.56 }, // サイドインテーク付近
-  { z: rearAxleZ + 0.15, halfWidth: 0.99, bottomY: gc, topY: gc + 0.55 }, // リアフェンダー(最大幅)
-  { z: -1.85,          halfWidth: 0.78, bottomY: gc, topY: gc + 0.50 }, // リアハンチ
-  { z: -halfLen,       halfWidth: 0.50, bottomY: gc, topY: gc + 0.45 }  // テールエンド
+  { z: halfLen,            halfWidth: 0.10, bottomY: gc, topY: gc + 0.30 }, // 鼻先端(尖らせる)
+  { z: halfLen - 0.30,     halfWidth: 0.62, bottomY: gc, topY: gc + 0.34 }, // フロントバンパー
+  { z: halfLen - 0.68,     halfWidth: 0.78, bottomY: gc, topY: gc + 0.42 }, // ボンネット付け根
+  { z: frontAxleZ + 0.34,  halfWidth: 0.72, bottomY: gc, topY: gc + 0.46 }, // フロントフェンダー手前
+  { z: frontAxleZ,         halfWidth: 0.68, bottomY: gc, topY: gc + 0.5 },  // フロントホイール位置(タイヤより内側)
+  { z: frontAxleZ - 0.34,  halfWidth: 0.72, bottomY: gc, topY: gc + 0.48 }, // フロントフェンダー奥
+  { z: 0.75,               halfWidth: 0.74, bottomY: gc, topY: gc + 0.60 }, // カウル/フロントガラス基部
+  { z: 0.10,               halfWidth: 0.82, bottomY: gc, topY: gc + 0.54 }, // ドア中央(くびれ)
+  { z: -0.55,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.56 }, // サイドインテーク付近
+  { z: rearAxleZ + 0.36,   halfWidth: 0.74, bottomY: gc, topY: gc + 0.5 },  // リアフェンダー手前
+  { z: rearAxleZ,          halfWidth: 0.70, bottomY: gc, topY: gc + 0.52 }, // リアホイール位置(タイヤより内側)
+  { z: rearAxleZ - 0.36,   halfWidth: 0.74, bottomY: gc, topY: gc + 0.5 },  // リアフェンダー奥
+  { z: -1.95,              halfWidth: 0.60, bottomY: gc, topY: gc + 0.46 }, // リアハンチ
+  { z: -halfLen,           halfWidth: 0.40, bottomY: gc, topY: gc + 0.42 }  // テールエンド
 ];
 const bodyLoft = buildLoft(bodyStations, bodyCrossSection, paintMat);
 car.add(bodyLoft);
+
+// フェンダーアーチ(タイヤの上側だけを覆う、太い円弧状の縁)。
+// タイヤの真横は覆わないので、真横から見てもタイヤが隠れたり
+// ボディにめり込んだりせず、上からしっかり張り出して見える。
+function buildFenderArch(wheelRadius, tubeRadius, centerX, centerZ) {
+  const arcAngle = Math.PI * 1.05; // 下側(接地側)を大きく開けた円弧
+  const geo = new THREE.TorusGeometry(wheelRadius + tubeRadius * 0.7, tubeRadius, 10, 24, arcAngle);
+  const arch = new THREE.Mesh(geo, paintMat);
+  arch.rotation.y = Math.PI / 2; // ホイールと同じ向き(X軸を中心にした円)に合わせる
+  arch.rotation.x = Math.PI / 2 + (Math.PI * 2 - arcAngle) / 2; // 円弧の開口部を真下に向ける
+  arch.position.set(centerX, wheelRadius, centerZ);
+  arch.castShadow = true;
+  return arch;
+}
 
 // ----------------------------------------------------------
 // 2. キャビン(ガラス+ルーフ)のロフト。ロワーボディの上に重ねる
@@ -138,7 +160,7 @@ car.add(cabinLoft);
 // ----------------------------------------------------------
 // 3. フロントノーズ細部(スプリッター・グリル・エアインテーク)
 // ----------------------------------------------------------
-const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.03, 0.16), carbonMat);
+const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.03, 0.14), carbonMat);
 splitter.position.set(0, gc + 0.01, halfLen + 0.02);
 car.add(splitter);
 
@@ -173,65 +195,73 @@ car.add(grille);
 //    「凹んだインテーク」だけを面に貼り付けて表現する
 // ----------------------------------------------------------
 [-1, 1].forEach((sign) => {
-  const outX = 0.99;
+  const doorX = 0.83;
   const frontShutline = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.4, 0.015), trimMat);
-  frontShutline.position.set(sign * outX, gc + 0.42, 0.62);
+  frontShutline.position.set(sign * doorX, gc + 0.42, 0.62);
   car.add(frontShutline);
 
   const rearShutline = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.4, 0.015), trimMat);
-  rearShutline.position.set(sign * outX, gc + 0.42, -0.55);
+  rearShutline.position.set(sign * doorX, gc + 0.42, -0.55);
   car.add(rearShutline);
 
   const doorHandle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.16), trimMat);
-  doorHandle.position.set(sign * outX, gc + 0.6, 0.05);
+  doorHandle.position.set(sign * doorX, gc + 0.6, 0.05);
   car.add(doorHandle);
 
-  // ドア後方の大型サイドエアインテーク(リアフェンダー手前)
-  const intakeFrame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.26, 0.42), trimMat);
-  intakeFrame.position.set(sign * 0.93, gc + 0.42, -0.9);
-  car.add(intakeFrame);
-  const intakeSlot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.34), new THREE.MeshStandardMaterial({ color: 0x030303 }));
-  intakeSlot.position.set(sign * 0.95, gc + 0.42, -0.9);
-  car.add(intakeSlot);
+  // ドア後方の大型サイドエアインテーク(リアフェンダー手前)。
+  // 前を浅く・後ろを深くえぐるように角度を付け、単なる黒い板ではなく
+  // ボディに切り込まれた開口部に見えるようにする
+  const intakeGroup = new THREE.Group();
+  const intakeOuter = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.48), trimMat);
+  intakeOuter.position.set(0, 0, 0);
+  intakeGroup.add(intakeOuter);
+  const intakeSlot = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.36), new THREE.MeshStandardMaterial({ color: 0x030303 }));
+  intakeSlot.position.set(sign * 0.02, 0, 0.02);
+  intakeGroup.add(intakeSlot);
+  intakeGroup.position.set(sign * 0.79, gc + 0.42, -0.9);
+  intakeGroup.rotation.y = sign * 0.12; // 前方がボディに沿い、後方がえぐれて見える角度
+  car.add(intakeGroup);
 });
 
 // ----------------------------------------------------------
 // 5. リアエンド(バンパー・テールランプ・ディフューザー)
 // ----------------------------------------------------------
-const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.12), trimMat);
-rearBumper.position.set(0, gc + 0.28, -halfLen + 0.06);
+const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.28, 0.12), trimMat);
+rearBumper.position.set(0, gc + 0.26, -halfLen + 0.06);
 car.add(rearBumper);
 
-const tailHousing = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.09, 0.05), trimMat);
-tailHousing.position.set(0, gc + 0.48, -halfLen + 0.02);
+const tailHousing = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.08, 0.05), trimMat);
+tailHousing.position.set(0, gc + 0.44, -halfLen + 0.02);
 car.add(tailHousing);
-const tailLight = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.06, 0.055), lightMatRear);
-tailLight.position.set(0, gc + 0.48, -halfLen + 0.015);
+const tailLight = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.055, 0.055), lightMatRear);
+tailLight.position.set(0, gc + 0.44, -halfLen + 0.015);
 car.add(tailLight);
 
-const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.26, 0.28), carbonMat);
-diffuser.position.set(0, gc + 0.13, -halfLen + 0.02);
+const diffuser = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.22, 0.26), carbonMat);
+diffuser.position.set(0, gc + 0.11, -halfLen + 0.02);
 car.add(diffuser);
-for (let i = -2.5; i <= 2.5; i++) {
-  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.1, 0.28), trimMat);
-  fin.position.set(i * 0.15, gc + 0.06, -halfLen + 0.02);
+for (let i = -1.5; i <= 1.5; i++) {
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.09, 0.26), trimMat);
+  fin.position.set(i * 0.14, gc + 0.05, -halfLen + 0.02);
   car.add(fin);
 }
 
 // ----------------------------------------------------------
-// 6. 可変リアウイング
+// 6. 可変リアウイング(薄いブレード+スイープしたステーで、
+//    「板を1枚置いただけ」に見えないようにする)
 // ----------------------------------------------------------
-const wingHalfWidth = 0.825;
-const strutHalfSpacing = 0.575;
-const wingZ = -halfLen + 0.35;
-const wingBaseY = gc + 0.6;
+const wingHalfWidth = 0.72;
+const strutHalfSpacing = 0.46;
+const wingZ = -halfLen + 0.32;
+const wingBaseY = gc + 0.56;
 [-1, 1].forEach((sign) => {
-  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.18, 0.1), carbonMat);
-  strut.position.set(sign * strutHalfSpacing, wingBaseY + 0.09, wingZ);
+  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.16, 0.09), carbonMat);
+  strut.position.set(sign * strutHalfSpacing, wingBaseY + 0.08, wingZ + 0.04);
+  strut.rotation.x = -0.25; // 後方へスイープさせ、リアボディとの一体感を出す
   car.add(strut);
 });
-const rearWing = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.04, 0.32), carbonMat);
-rearWing.position.set(0, wingBaseY + 0.18, wingZ);
+const rearWing = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.03, 0.26), carbonMat);
+rearWing.position.set(0, wingBaseY + 0.16, wingZ);
 rearWing.rotation.x = -8 * Math.PI / 180;
 rearWing.castShadow = true;
 car.add(rearWing);
@@ -242,11 +272,14 @@ car.add(rearWing);
 });
 
 // ----------------------------------------------------------
-// 7. ドアミラー
+// 7. ドアミラー(ボディに沿わせた小型のスポーツミラー)
 // ----------------------------------------------------------
 [-1, 1].forEach((sign) => {
-  const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.18), roofMat);
-  mirror.position.set(sign * 1.05, gc + 0.66, 0.72);
+  const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.03), roofMat);
+  stalk.position.set(sign * 0.76, gc + 0.68, 0.68);
+  car.add(stalk);
+  const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.06, 0.15), roofMat);
+  mirror.position.set(sign * 0.85, gc + 0.66, 0.62);
   car.add(mirror);
 });
 
@@ -311,6 +344,9 @@ wheelSpecs.forEach((spec) => {
   const wheelGroup = buildWheel(spec.radius, spec.width, spec.radius * 0.62, spec.disc, spec.caliper, spec.x);
   wheelGroup.position.set(spec.x, spec.radius, spec.z);
   car.add(wheelGroup);
+
+  const arch = buildFenderArch(spec.radius, 0.11, spec.x, spec.z);
+  car.add(arch);
 });
 
 // ==========================================================
@@ -420,7 +456,7 @@ const sideMirrorCams = [];
 
   const screenMat = new THREE.MeshBasicMaterial({ map: rt.texture });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.1), screenMat);
-  screen.position.set(sign * 1.05, gc + 0.62, 0.68);
+  screen.position.set(sign * 0.85, gc + 0.62, 0.62);
   screen.lookAt(-0.32, floorHeight + 0.76, bPillarZ + 0.5);
   screen.rotation.y += Math.PI;
   interiorGroup.add(screen);

@@ -350,9 +350,11 @@ function terrainHeight(x, z) {
     // 尾根から左右に離れるほど谷側へ緩やかに下がる(道が振れても急勾配になりすぎない範囲)
     const sideFall = Math.min(1, Math.abs(x) / 260);
     h *= (1 - 0.5 * sideFall * sideFall);
-    // 岩肌のごつごつした質感(小さな起伏)。山頂付近では控えめにして道を滑らかに保つ
+    // 岩肌のごつごつした質感(小さな起伏)。山頂付近では控えめにして道を滑らかに保つ。
+    // 地面メッシュが粗いポリゴンのため、波長を長め・振幅を控えめにして、
+    // 道路の舗装面(正確なterrainHeightで計算)との間にズレ(道の埋没)が出ないようにしている。
     const roughness = 1 - Math.min(1, h / MOUNTAIN_PEAK_HEIGHT) * 0.6;
-    h += (Math.sin(x * 0.09) * Math.cos(z * 0.07) * 1.6 + Math.sin(x * 0.23 + z * 0.05) * 0.8) * roughness;
+    h += (Math.sin(x * 0.035) * Math.cos(z * 0.03) * 0.6 + Math.sin(x * 0.05 + z * 0.02) * 0.3) * roughness;
     return h;
   }
   if (SUPERFLAT_MODE) {
@@ -394,8 +396,42 @@ function terrainHeight(x, z) {
 // 車もこの分だけ高さを合わせて、タイヤが道路にめり込まないようにする
 const ROAD_SURFACE_OFFSET = 0.3;
 
+// マウンテンパスモードの道路パス(ヘアピンカーブ)を、地面メッシュより先に計算しておく。
+// こうすることで、地面の頂点のうち道路に近いものを「舗装面より少し下」に
+// 強制的に合わせ込む(掘り込む)ことができ、地面の粗いポリゴンが
+// 舗装面を突き破って埋め込んで見える問題を根本から防げる。
+const MOUNTAIN_ROAD_HALF_WIDTH = 5;
+const MOUNTAIN_ROAD_OFFSET = 0.4;
+let mountainRoadPoints = null;
+if (MOUNTAIN_MODE) {
+  const mountainRoadWaypoints = [
+    { x: 0,    z: 0 },
+    { x: 25,   z: -45 },
+    { x: 95,   z: -95 },
+    { x: 108,  z: -145 },   // ヘアピン(右)
+    { x: 35,   z: -172 },
+    { x: -75,  z: -205 },
+    { x: -105, z: -255 },   // ヘアピン(左)
+    { x: -30,  z: -282 },
+    { x: 75,   z: -325 },
+    { x: 102,  z: -375 },   // ヘアピン(右)
+    { x: 25,   z: -402 },
+    { x: -95,  z: -432 },
+    { x: -112, z: -485 },   // ヘアピン(左)
+    { x: -25,  z: -512 },
+    { x: 82,   z: -552 },
+    { x: 95,   z: -602 },   // ヘアピン(右)
+    { x: 20,   z: -628 },
+    { x: 0,    z: -655 }
+  ];
+  const mountainControlPoints = mountainRoadWaypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
+  const mountainCurve = new THREE.CatmullRomCurve3(mountainControlPoints, false, 'catmullrom', 0.45);
+  mountainRoadPoints = mountainCurve.getPoints(340);
+}
+
 const groundSize = 4000;
-const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 140, 140);
+const groundSegments = MOUNTAIN_MODE ? 220 : 140; // マウンテンパスは起伏が多いため解像度を上げる
+const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, groundSegments, groundSegments);
 groundGeo.rotateX(-Math.PI / 2);
 
 // 地形に起伏をつける(なめらかな高さ関数を使用)
@@ -405,6 +441,45 @@ for (let i = 0; i < posAttr.count; i++) {
   const z = posAttr.getZ(i);
   posAttr.setY(i, terrainHeight(x, z));
 }
+
+// マウンテンパスモード: 道路に近い地面の頂点は「舗装面より少し下」に
+// 掘り込んでおく。地面メッシュは粗いポリゴンで、舗装面(道路そのもの)は
+// 曲線に沿った細かい点列で正確に高さ計算しているため、何もしないと
+// 地面のカクカクした補間誤差で道路の上に地面が突き出て「めり込んで」
+// 見えてしまう。ここでその誤差を吸収する。
+if (MOUNTAIN_MODE && mountainRoadPoints) {
+  // 探索を軽くするため、パスは少し間引いたサンプル点を使う
+  const carveSamples = [];
+  for (let i = 0; i < mountainRoadPoints.length; i += 3) {
+    const p = mountainRoadPoints[i];
+    carveSamples.push({ x: p.x, z: p.z, h: terrainHeight(p.x, p.z) });
+  }
+  const carveRadius = MOUNTAIN_ROAD_HALF_WIDTH + 22; // この距離まで地面をなだらかに掘り込む
+  const carveClearance = 0.15; // 舗装面のさらに下、余裕を持たせる分
+  for (let i = 0; i < posAttr.count; i++) {
+    const x = posAttr.getX(i);
+    const z = posAttr.getZ(i);
+    // まず簡易的なバウンディングボックスで足切りしてから、詳しい距離計算をする
+    if (x < -450 || x > 450 || z < -700 || z > 80) continue;
+    let bestDist = Infinity, bestH = 0;
+    for (let s = 0; s < carveSamples.length; s++) {
+      const sample = carveSamples[s];
+      const dx = x - sample.x, dz = z - sample.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestDist) { bestDist = d2; bestH = sample.h; }
+    }
+    bestDist = Math.sqrt(bestDist);
+    if (bestDist < carveRadius) {
+      const t = Math.min(1, bestDist / carveRadius);
+      const blend = t * t * (3 - 2 * t); // 0(道路際)→1(carveRadius外側)へなめらかに変化
+      const target = bestH - carveClearance;
+      const original = posAttr.getY(i);
+      const blended = target * (1 - blend) + original * blend;
+      posAttr.setY(i, Math.min(original, blended));
+    }
+  }
+}
+
 groundGeo.computeVertexNormals();
 
 const groundMat = new THREE.MeshStandardMaterial({
@@ -1211,54 +1286,33 @@ if (ROUTE66_MODE) {
   buildRoute66Sign(6, 60);
 }
 
-let mountainRoadPoints = null; // マウンテンパスモードの道路点列(ミニマップ描画でも使う)
 if (MOUNTAIN_MODE) {
   // ==========================================================
-  // ヘアピンカーブ中心の峠道
-  // 麓(z=0付近)から山頂(z=-655付近)まで、スプライン曲線でつないだ
-  // ヘアピンカーブの連続で登っていく一本道。
+  // ヘアピンカーブ中心の峠道(道路パス自体は地面生成前に計算済み)
   // ==========================================================
-  const mountainRoadWaypoints = [
-    { x: 0,    z: 0 },
-    { x: 25,   z: -45 },
-    { x: 95,   z: -95 },
-    { x: 108,  z: -145 },   // ヘアピン(右)
-    { x: 35,   z: -172 },
-    { x: -75,  z: -205 },
-    { x: -105, z: -255 },   // ヘアピン(左)
-    { x: -30,  z: -282 },
-    { x: 75,   z: -325 },
-    { x: 102,  z: -375 },   // ヘアピン(右)
-    { x: 25,   z: -402 },
-    { x: -95,  z: -432 },
-    { x: -112, z: -485 },   // ヘアピン(左)
-    { x: -25,  z: -512 },
-    { x: 82,   z: -552 },
-    { x: 95,   z: -602 },   // ヘアピン(右)
-    { x: 20,   z: -628 },
-    { x: 0,    z: -655 }
-  ];
-  const mountainControlPoints = mountainRoadWaypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
-  const mountainCurve = new THREE.CatmullRomCurve3(mountainControlPoints, false, 'catmullrom', 0.45);
-  mountainRoadPoints = mountainCurve.getPoints(340);
+  const mountainRoadHalfWidth = MOUNTAIN_ROAD_HALF_WIDTH;
+  buildOpenRibbon(mountainRoadPoints, mountainRoadHalfWidth, MOUNTAIN_ROAD_OFFSET, roadMat);
 
-  const mountainRoadHalfWidth = 5;
-  buildOpenRibbon(mountainRoadPoints, mountainRoadHalfWidth, ROAD_SURFACE_OFFSET, roadMat);
-
-  // 左右の白線
-  const mountainLineHalf = 0.12;
-  const mountainEdgeInset = mountainRoadHalfWidth - 0.35;
-  [-1, 1].forEach((side) => {
-    const offsetPts = mountainRoadPoints.map((p, i) => {
+  // 左右の白線・ガードレールで共通して使う「道路中心線からのオフセット点列」を作る関数。
+  // 白線とガードレールを同じ関数で計算することで、ヘアピンで方向が反転しても
+  // 両者が道路からズレたり食い違ったりしないようにしている。
+  function mountainOffsetPoints(inset, side) {
+    return mountainRoadPoints.map((p, i) => {
       const next = mountainRoadPoints[Math.min(mountainRoadPoints.length - 1, i + 1)];
       const prev = mountainRoadPoints[Math.max(0, i - 1)];
       const tangent = new THREE.Vector3().subVectors(next, prev);
       if (tangent.lengthSq() < 1e-8) tangent.set(0, 0, 1);
       tangent.normalize();
       const perpX = tangent.z, perpZ = -tangent.x;
-      return new THREE.Vector3(p.x + perpX * mountainEdgeInset * side, 0, p.z + perpZ * mountainEdgeInset * side);
+      return new THREE.Vector3(p.x + perpX * inset * side, 0, p.z + perpZ * inset * side);
     });
-    buildOpenRibbon(offsetPts, mountainLineHalf, 0.32, roadLineMat);
+  }
+
+  // 左右の白線
+  const mountainLineHalf = 0.12;
+  const mountainEdgeInset = mountainRoadHalfWidth - 0.35;
+  [-1, 1].forEach((side) => {
+    buildOpenRibbon(mountainOffsetPoints(mountainEdgeInset, side), mountainLineHalf, MOUNTAIN_ROAD_OFFSET + 0.02, roadLineMat);
   });
 
   // 中央の黄色い破線(峠道らしいセンターライン)
@@ -1277,7 +1331,7 @@ if (MOUNTAIN_MODE) {
         distAcc = 0;
         const tangent = new THREE.Vector3().subVectors(b, a).normalize();
         const perpX = tangent.z, perpZ = -tangent.x;
-        const y = terrainHeight(b.x, b.z) + ROAD_SURFACE_OFFSET + 0.02;
+        const y = terrainHeight(b.x, b.z) + MOUNTAIN_ROAD_OFFSET + 0.02;
         const p1x = b.x - tangent.x * halfL, p1z = b.z - tangent.z * halfL;
         const p2x = b.x + tangent.x * halfL, p2z = b.z + tangent.z * halfL;
         dashPositions.push(
@@ -1297,34 +1351,35 @@ if (MOUNTAIN_MODE) {
     scene.add(new THREE.Mesh(dashGeo, mountainYellowMat));
   }
 
-  // ガードレール(崖側の目印。標高が高く谷側に落ちる区間を中心に、外側の縁に沿って設置)
+  // ガードレール(崖側の目印。標高が高く谷側に落ちる区間を中心に、道路の縁に沿って両側に設置)
+  // 白線と全く同じ mountainOffsetPoints() で位置を計算し、buildOpenRibbon で
+  // 地形に沿った連続したリボンとして手すり本体を作る。ポツポツと独立した箱を
+  // 個別に回転させて置くのではないため、ヘアピンでも道からズレたり途切れたりしない。
   const guardrailMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d0, metalness: 0.3, roughness: 0.5 });
   const guardrailPostMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
   {
-    const railInset = mountainRoadHalfWidth + 0.4;
-    let stepAcc = 0;
-    for (let i = 1; i < mountainRoadPoints.length; i++) {
-      const a = mountainRoadPoints[i - 1], b = mountainRoadPoints[i];
-      const segLen = a.distanceTo(b);
-      stepAcc += segLen;
-      const h = terrainHeight(b.x, b.z);
-      if (h < MOUNTAIN_ROCK_LINE * 0.5) continue; // 麓に近い区間はガードレール無し
-      if (stepAcc < 4) continue;
-      stepAcc = 0;
-      const tangent = new THREE.Vector3().subVectors(b, a).normalize();
-      const perpX = tangent.z, perpZ = -tangent.x;
-      // カーブの外側(道の中心である尾根の稜線から遠ざかる側)に立てる
-      const outSide = b.x > 0 ? 1 : -1;
-      const px = b.x + perpX * railInset * outSide;
-      const pz = b.z + perpZ * railInset * outSide;
-      const py = terrainHeight(px, pz) + ROAD_SURFACE_OFFSET;
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), guardrailPostMat);
-      post.position.set(px, py + 0.3, pz);
-      scene.add(post);
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 0.1), guardrailMat);
-      rail.position.set(px, py + 0.55, pz);
-      rail.rotation.y = Math.atan2(tangent.x, tangent.z);
-      scene.add(rail);
+    const railInset = mountainRoadHalfWidth + 0.5;
+    const railHeight = 0.55;
+    // 麓に近い区間(標高が低い区間)にはガードレールを付けない。
+    // 標高は道なりに単調増加するため、しきい値を初めて超えるインデックスから先だけを使えばよい。
+    const guardrailStart = mountainRoadPoints.findIndex((p) => terrainHeight(p.x, p.z) >= MOUNTAIN_ROCK_LINE * 0.5);
+    if (guardrailStart >= 0) {
+      [-1, 1].forEach((side) => {
+        const railPts = mountainOffsetPoints(railInset, side).slice(guardrailStart);
+        buildOpenRibbon(railPts, 0.06, railHeight, guardrailMat);
+        // 支柱(一定間隔ごとに、リボンと同じ点列・同じ高さ計算で配置するため位置がずれない)
+        let stepAcc = 0;
+        for (let i = 1; i < railPts.length; i++) {
+          const a = railPts[i - 1], b = railPts[i];
+          stepAcc += a.distanceTo(b);
+          if (stepAcc < 4) continue;
+          stepAcc = 0;
+          const py = terrainHeight(b.x, b.z) + MOUNTAIN_ROAD_OFFSET;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, railHeight + 0.1, 0.12), guardrailPostMat);
+          post.position.set(b.x, py + (railHeight + 0.1) / 2, b.z);
+          scene.add(post);
+        }
+      });
     }
   }
 

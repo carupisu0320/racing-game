@@ -129,11 +129,13 @@ function updateDistanceCulling() {
 // マップの表示モード(空や地面の色分けにも使うため、シーン作成直後に定義しておく)
 // スーパーフラットモード: 地形・ビル・木・道路・高速道路をすべて取り除き、何もない平らな地面だけにする(編集モードで一から配置するため)
 // ルート66モード: 砂漠を貫くハイウェイのマップ
+// マウンテンパスモード: ヘアピンカーブ中心の峠道。標高が上がるにつれ森林→岩肌→雪に変化する高山マップ
 const SUPERFLAT_MODE = false;
-const ROUTE66_MODE = true;
+const ROUTE66_MODE = false;
+const MOUNTAIN_MODE = true;
 
-scene.background = new THREE.Color(ROUTE66_MODE ? 0xbfdff0 : 0x87CEEB);
-scene.fog = new THREE.Fog(ROUTE66_MODE ? 0xd8c9a3 : 0x87CEEB, 250, 1500);
+scene.background = new THREE.Color(MOUNTAIN_MODE ? 0xaed4ec : (ROUTE66_MODE ? 0xbfdff0 : 0x87CEEB));
+scene.fog = new THREE.Fog(MOUNTAIN_MODE ? 0xe4edf2 : (ROUTE66_MODE ? 0xd8c9a3 : 0x87CEEB), MOUNTAIN_MODE ? 90 : 250, MOUNTAIN_MODE ? 950 : 1500);
 
 const camera = new THREE.PerspectiveCamera(
   70, window.innerWidth / window.innerHeight, 0.1, 4000
@@ -321,7 +323,38 @@ const desertMesas = [
 // 編集モードで配置した丘(なだらかな盛り上がり)。{x, z, radius, height} の配列。
 const editorHills = [];
 
+// ==========================================================
+// マウンテンパス(峠道)の地形設定
+// スタート地点(z=0付近)を麓とし、-z方向(奥)に向かって登る一本の尾根。
+// 尾根の頂上(サミット)は z = -MOUNTAIN_SUMMIT_Z 付近。
+// 標高は z にほぼ比例して立ち上がる(x方向には緩やかな起伏だけを足すことで、
+// ヘアピンで左右に振れても道の勾配が不自然に暴れないようにしている)。
+// ==========================================================
+const MOUNTAIN_SUMMIT_Z = -640;      // 山頂付近のz座標(麓は概ねz=40)
+const MOUNTAIN_BASE_Z = 40;
+const MOUNTAIN_PEAK_HEIGHT = 150;    // 山頂の高さ
+const MOUNTAIN_SNOW_LINE = MOUNTAIN_PEAK_HEIGHT * 0.62;  // これより高いと雪
+const MOUNTAIN_ROCK_LINE = MOUNTAIN_PEAK_HEIGHT * 0.30;  // これより高いと岩肌(これより低いと森林)
+
+function mountainRidgeHeight(z) {
+  const t = Math.min(1, Math.max(0, (MOUNTAIN_BASE_Z - z) / (MOUNTAIN_BASE_Z - MOUNTAIN_SUMMIT_Z)));
+  // 序盤はなだらか、中盤から急に立ち上がり、山頂付近でなだらかに平らになる形状
+  const shaped = t * t * (3 - 2 * t);
+  return MOUNTAIN_PEAK_HEIGHT * Math.pow(shaped, 0.85);
+}
+
 function terrainHeight(x, z) {
+  if (MOUNTAIN_MODE) {
+    // 尾根に沿った基本の立ち上がり
+    let h = mountainRidgeHeight(z);
+    // 尾根から左右に離れるほど谷側へ緩やかに下がる(道が振れても急勾配になりすぎない範囲)
+    const sideFall = Math.min(1, Math.abs(x) / 260);
+    h *= (1 - 0.5 * sideFall * sideFall);
+    // 岩肌のごつごつした質感(小さな起伏)。山頂付近では控えめにして道を滑らかに保つ
+    const roughness = 1 - Math.min(1, h / MOUNTAIN_PEAK_HEIGHT) * 0.6;
+    h += (Math.sin(x * 0.09) * Math.cos(z * 0.07) * 1.6 + Math.sin(x * 0.23 + z * 0.05) * 0.8) * roughness;
+    return h;
+  }
   if (SUPERFLAT_MODE) {
     let h = 0;
     for (const hill of editorHills) {
@@ -374,7 +407,36 @@ for (let i = 0; i < posAttr.count; i++) {
 }
 groundGeo.computeVertexNormals();
 
-const groundMat = new THREE.MeshStandardMaterial({ color: ROUTE66_MODE ? 0xc7a771 : 0x4a7c3a, side: THREE.DoubleSide });
+const groundMat = new THREE.MeshStandardMaterial({
+  color: MOUNTAIN_MODE ? 0xffffff : (ROUTE66_MODE ? 0xc7a771 : 0x4a7c3a),
+  vertexColors: MOUNTAIN_MODE,
+  side: THREE.DoubleSide
+});
+
+// マウンテンパスモードでは、標高ごとに「森林(低地)→岩肌(中腹)→雪(山頂)」と
+// 色が変わるように、頂点ごとの色を地形の高さから計算して塗る
+if (MOUNTAIN_MODE) {
+  const forestColor = new THREE.Color(0x4c6b39);
+  const rockColor = new THREE.Color(0x7d7368);
+  const snowColor = new THREE.Color(0xf5f7fa);
+  const colors = [];
+  for (let i = 0; i < posAttr.count; i++) {
+    const h = posAttr.getY(i);
+    let c;
+    if (h < MOUNTAIN_ROCK_LINE) {
+      const t = Math.min(1, Math.max(0, h / MOUNTAIN_ROCK_LINE));
+      c = forestColor.clone().lerp(rockColor, t);
+    } else if (h < MOUNTAIN_SNOW_LINE) {
+      const t = (h - MOUNTAIN_ROCK_LINE) / (MOUNTAIN_SNOW_LINE - MOUNTAIN_ROCK_LINE);
+      c = rockColor.clone().lerp(snowColor, t);
+    } else {
+      c = snowColor;
+    }
+    colors.push(c.r, c.g, c.b);
+  }
+  groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+}
+
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.receiveShadow = true;
 scene.add(ground);
@@ -386,7 +448,7 @@ const groundSlab = new THREE.Mesh(new THREE.BoxGeometry(groundSize, 6, groundSiz
 groundSlab.position.y = -6;
 scene.add(groundSlab);
 
-if (!SUPERFLAT_MODE && !ROUTE66_MODE) {
+if (!SUPERFLAT_MODE && !ROUTE66_MODE && !MOUNTAIN_MODE) {
 // 街エリア(中央付近)を示すプレースホルダーのビル群
 const cityBuildings = new THREE.Group();
 for (let i = 0; i < 25; i++) {
@@ -580,7 +642,7 @@ const roadWaypoints = [
 ];
 
 let loopRoadPoints = null;
-if (!SUPERFLAT_MODE && !ROUTE66_MODE) {
+if (!SUPERFLAT_MODE && !ROUTE66_MODE && !MOUNTAIN_MODE) {
 if (osmRoadElements.length > 0) {
   buildRealRoadsFromOSM(osmRoadElements);
 } else {
@@ -1149,6 +1211,238 @@ if (ROUTE66_MODE) {
   buildRoute66Sign(6, 60);
 }
 
+let mountainRoadPoints = null; // マウンテンパスモードの道路点列(ミニマップ描画でも使う)
+if (MOUNTAIN_MODE) {
+  // ==========================================================
+  // ヘアピンカーブ中心の峠道
+  // 麓(z=0付近)から山頂(z=-655付近)まで、スプライン曲線でつないだ
+  // ヘアピンカーブの連続で登っていく一本道。
+  // ==========================================================
+  const mountainRoadWaypoints = [
+    { x: 0,    z: 0 },
+    { x: 25,   z: -45 },
+    { x: 95,   z: -95 },
+    { x: 108,  z: -145 },   // ヘアピン(右)
+    { x: 35,   z: -172 },
+    { x: -75,  z: -205 },
+    { x: -105, z: -255 },   // ヘアピン(左)
+    { x: -30,  z: -282 },
+    { x: 75,   z: -325 },
+    { x: 102,  z: -375 },   // ヘアピン(右)
+    { x: 25,   z: -402 },
+    { x: -95,  z: -432 },
+    { x: -112, z: -485 },   // ヘアピン(左)
+    { x: -25,  z: -512 },
+    { x: 82,   z: -552 },
+    { x: 95,   z: -602 },   // ヘアピン(右)
+    { x: 20,   z: -628 },
+    { x: 0,    z: -655 }
+  ];
+  const mountainControlPoints = mountainRoadWaypoints.map((p) => new THREE.Vector3(p.x, 0, p.z));
+  const mountainCurve = new THREE.CatmullRomCurve3(mountainControlPoints, false, 'catmullrom', 0.45);
+  mountainRoadPoints = mountainCurve.getPoints(340);
+
+  const mountainRoadHalfWidth = 5;
+  buildOpenRibbon(mountainRoadPoints, mountainRoadHalfWidth, ROAD_SURFACE_OFFSET, roadMat);
+
+  // 左右の白線
+  const mountainLineHalf = 0.12;
+  const mountainEdgeInset = mountainRoadHalfWidth - 0.35;
+  [-1, 1].forEach((side) => {
+    const offsetPts = mountainRoadPoints.map((p, i) => {
+      const next = mountainRoadPoints[Math.min(mountainRoadPoints.length - 1, i + 1)];
+      const prev = mountainRoadPoints[Math.max(0, i - 1)];
+      const tangent = new THREE.Vector3().subVectors(next, prev);
+      if (tangent.lengthSq() < 1e-8) tangent.set(0, 0, 1);
+      tangent.normalize();
+      const perpX = tangent.z, perpZ = -tangent.x;
+      return new THREE.Vector3(p.x + perpX * mountainEdgeInset * side, 0, p.z + perpZ * mountainEdgeInset * side);
+    });
+    buildOpenRibbon(offsetPts, mountainLineHalf, 0.32, roadLineMat);
+  });
+
+  // 中央の黄色い破線(峠道らしいセンターライン)
+  const mountainYellowMat = new THREE.MeshBasicMaterial({ color: 0xe8c23a });
+  {
+    const dashPositions = [];
+    const dashIndices = [];
+    const halfW = 0.11, halfL = 1.1;
+    let vi = 0;
+    let distAcc = 0;
+    for (let i = 1; i < mountainRoadPoints.length; i++) {
+      const a = mountainRoadPoints[i - 1], b = mountainRoadPoints[i];
+      const segLen = a.distanceTo(b);
+      distAcc += segLen;
+      if (distAcc >= 5) {
+        distAcc = 0;
+        const tangent = new THREE.Vector3().subVectors(b, a).normalize();
+        const perpX = tangent.z, perpZ = -tangent.x;
+        const y = terrainHeight(b.x, b.z) + ROAD_SURFACE_OFFSET + 0.02;
+        const p1x = b.x - tangent.x * halfL, p1z = b.z - tangent.z * halfL;
+        const p2x = b.x + tangent.x * halfL, p2z = b.z + tangent.z * halfL;
+        dashPositions.push(
+          p1x + perpX * halfW, y, p1z + perpZ * halfW,
+          p1x - perpX * halfW, y, p1z - perpZ * halfW,
+          p2x - perpX * halfW, y, p2z - perpZ * halfW,
+          p2x + perpX * halfW, y, p2z + perpZ * halfW
+        );
+        dashIndices.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3);
+        vi += 4;
+      }
+    }
+    const dashGeo = new THREE.BufferGeometry();
+    dashGeo.setAttribute('position', new THREE.Float32BufferAttribute(dashPositions, 3));
+    dashGeo.setIndex(dashIndices);
+    dashGeo.computeVertexNormals();
+    scene.add(new THREE.Mesh(dashGeo, mountainYellowMat));
+  }
+
+  // ガードレール(崖側の目印。標高が高く谷側に落ちる区間を中心に、外側の縁に沿って設置)
+  const guardrailMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d0, metalness: 0.3, roughness: 0.5 });
+  const guardrailPostMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  {
+    const railInset = mountainRoadHalfWidth + 0.4;
+    let stepAcc = 0;
+    for (let i = 1; i < mountainRoadPoints.length; i++) {
+      const a = mountainRoadPoints[i - 1], b = mountainRoadPoints[i];
+      const segLen = a.distanceTo(b);
+      stepAcc += segLen;
+      const h = terrainHeight(b.x, b.z);
+      if (h < MOUNTAIN_ROCK_LINE * 0.5) continue; // 麓に近い区間はガードレール無し
+      if (stepAcc < 4) continue;
+      stepAcc = 0;
+      const tangent = new THREE.Vector3().subVectors(b, a).normalize();
+      const perpX = tangent.z, perpZ = -tangent.x;
+      // カーブの外側(道の中心である尾根の稜線から遠ざかる側)に立てる
+      const outSide = b.x > 0 ? 1 : -1;
+      const px = b.x + perpX * railInset * outSide;
+      const pz = b.z + perpZ * railInset * outSide;
+      const py = terrainHeight(px, pz) + ROAD_SURFACE_OFFSET;
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), guardrailPostMat);
+      post.position.set(px, py + 0.3, pz);
+      scene.add(post);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 0.1), guardrailMat);
+      rail.position.set(px, py + 0.55, pz);
+      rail.rotation.y = Math.atan2(tangent.x, tangent.z);
+      scene.add(rail);
+    }
+  }
+
+  // 針葉樹林(標高が低いエリアに茂る松のような木)。道からは十分離して配置する。
+  const pineFoliageMat = new THREE.MeshStandardMaterial({ color: 0x2f5233, roughness: 0.9 });
+  const pineTrunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3524 });
+  function buildPine(x, z) {
+    const y = terrainHeight(x, z);
+    const tree = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 1.6, 6), pineTrunkMat);
+    trunk.position.y = 0.8;
+    tree.add(trunk);
+    const tierCount = 3;
+    for (let i = 0; i < tierCount; i++) {
+      const tierH = 2.6 - i * 0.5;
+      const tierR = 1.7 - i * 0.35;
+      const tier = new THREE.Mesh(new THREE.ConeGeometry(tierR, tierH, 8), pineFoliageMat);
+      tier.position.y = 1.6 + i * 1.5;
+      tier.castShadow = true;
+      tree.add(tier);
+    }
+    tree.position.set(x, y, z);
+    scene.add(tree);
+  }
+  let pinesPlaced = 0, pineAttempts = 0;
+  while (pinesPlaced < 150 && pineAttempts < 3000) {
+    pineAttempts++;
+    const x = (Math.random() - 0.5) * 480;
+    const z = -20 + Math.random() * -580;
+    if (Math.abs(x) < 22) continue; // 道の上を避ける
+    const h = terrainHeight(x, z);
+    if (h > MOUNTAIN_ROCK_LINE) continue; // 森林限界より上には生えない
+    buildPine(x, z);
+    pinesPlaced++;
+  }
+
+  // 岩(中腹〜山頂にかけての、ごつごつした転石)。InstancedMeshにまとめて描画負荷を抑える。
+  const mountainRockMat = new THREE.MeshStandardMaterial({ color: 0x8b877e, roughness: 1.0 });
+  const mountainRockGeo = new THREE.DodecahedronGeometry(1, 0);
+  const mountainRockCount = 220;
+  const mountainRockMesh = new THREE.InstancedMesh(mountainRockGeo, mountainRockMat, mountainRockCount);
+  mountainRockMesh.castShadow = true;
+  mountainRockMesh.receiveShadow = true;
+  const mrDummy = new THREE.Object3D();
+  let mRocksPlaced = 0, mRockAttempts = 0;
+  while (mRocksPlaced < mountainRockCount && mRockAttempts < mountainRockCount * 25) {
+    mRockAttempts++;
+    const x = (Math.random() - 0.5) * 500;
+    const z = -10 + Math.random() * -650;
+    if (Math.abs(x) < 20) continue;
+    const h = terrainHeight(x, z);
+    if (h < MOUNTAIN_ROCK_LINE * 0.6) continue; // 岩肌〜山頂エリアのみ
+    const size = 0.7 + Math.random() * 1.6;
+    mrDummy.position.set(x, h + size * 0.4, z);
+    mrDummy.rotation.set(Math.random(), Math.random(), Math.random());
+    mrDummy.scale.setScalar(size);
+    mrDummy.updateMatrix();
+    mountainRockMesh.setMatrixAt(mRocksPlaced, mrDummy.matrix);
+    rockObstacles.push({ x, z, radius: size * 0.9 });
+    mRocksPlaced++;
+  }
+  mountainRockMesh.count = mRocksPlaced;
+  mountainRockMesh.instanceMatrix.needsUpdate = true;
+  scene.add(mountainRockMesh);
+
+  // 麓近くの展望駐車場に建つ、簡易的な山小屋(ブランド表記なしのオリジナルデザイン)
+  function buildMountainLodge(x, z) {
+    const y = terrainHeight(x, z);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x6b4a34 });
+    const roofMatLocal = new THREE.MeshStandardMaterial({ color: 0x3a3a3a });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 6), wallMat);
+    body.position.set(x, y + 1.6, z);
+    body.castShadow = true;
+    scene.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(6.5, 2.4, 4), roofMatLocal);
+    roof.rotation.y = Math.PI / 4;
+    roof.position.set(x, y + 4.4, z);
+    scene.add(roof);
+  }
+  buildMountainLodge(-14, -60);
+
+  // 山頂の看板(峠道の頂上を示す標識、ブランド表記なしのオリジナルデザイン)
+  function buildSummitSign(x, z) {
+    const y = terrainHeight(x, z);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.4 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.4, 8), poleMat);
+    pole.position.set(x, y + 1.7, z);
+    scene.add(pole);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 220;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 220, 200);
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 212, 192);
+    ctx.fillStyle = '#222222';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('山頂', 110, 90);
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('SUMMIT', 110, 140);
+    const texture = new THREE.CanvasTexture(canvas);
+    const board = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.0, 1.8),
+      new THREE.MeshBasicMaterial({ map: texture })
+    );
+    board.position.set(x, y + 3.0, z + 0.01);
+    scene.add(board);
+    const boardBack = board.clone();
+    boardBack.rotation.y = Math.PI;
+    scene.add(boardBack);
+  }
+  buildSummitSign(-12, -650);
+}
+
 // ==========================================================
 // スピードメーター(画面右下に固定表示。薄い背景+速度に応じて動く針)
 // (車のモデルによらず共通のUIなので、車ごとのファイルには含めない)
@@ -1246,7 +1540,7 @@ function loadCarModel(key, paintColorHex) {
     return;
   }
   const prevPos = car ? car.position.clone() : null;
-  const prevRotY = car ? car.rotation.y : (ROUTE66_MODE ? 0 : Math.PI);
+  const prevRotY = car ? car.rotation.y : ((ROUTE66_MODE || MOUNTAIN_MODE) ? 0 : Math.PI);
   if (car) scene.remove(car);
 
   const model = modelDef.build(paintColorHex !== undefined ? paintColorHex : modelDef.defaultColor);
@@ -1270,7 +1564,7 @@ function loadCarModel(key, paintColorHex) {
     car.position.copy(prevPos);
     car.rotation.y = prevRotY;
   } else {
-    car.position.set(ROUTE66_MODE ? 0 : 45, 0, ROUTE66_MODE ? 0 : 125); // 道路上からスタート
+    car.position.set((ROUTE66_MODE || MOUNTAIN_MODE) ? 0 : 45, 0, (ROUTE66_MODE || MOUNTAIN_MODE) ? 0 : 125); // 道路上からスタート
   }
   scene.add(car);
 
@@ -1675,22 +1969,25 @@ window.addEventListener('keydown', (e) => {
 
 function drawMap() {
   const w = mapCanvas.width, h = mapCanvas.height;
-  mapCtx.fillStyle = '#d8c9a3';
+  mapCtx.fillStyle = MOUNTAIN_MODE ? '#dfe9e2' : '#d8c9a3';
   mapCtx.fillRect(0, 0, w, h);
 
   // ワールド座標をマップのキャンバス座標に変換する(全体が収まるスケールにする)
   const worldHalf = groundSize / 2;
-  const scale = (Math.min(w, h) * 0.45) / worldHalf;
-  const toMap = (x, z) => ({ mx: w / 2 + x * scale, mz: h / 2 + z * scale });
+  const scale = MOUNTAIN_MODE ? (Math.min(w, h) * 0.42 / 340) : ((Math.min(w, h) * 0.45) / worldHalf);
+  const mapOffsetZ = MOUNTAIN_MODE ? -330 : 0; // 峠道は麓〜山頂を中央に収める
+  const toMap = (x, z) => ({ mx: w / 2 + x * scale, mz: h / 2 + (z - mapOffsetZ) * scale });
 
-  // メサ(岩山)
-  mapCtx.fillStyle = '#a97c50';
-  desertMesas.forEach((mesa) => {
-    const p = toMap(mesa.x, mesa.z);
-    mapCtx.beginPath();
-    mapCtx.arc(p.mx, p.mz, Math.max(2, mesa.radius * scale), 0, Math.PI * 2);
-    mapCtx.fill();
-  });
+  // メサ(岩山、ルート66モードのみ)
+  if (ROUTE66_MODE) {
+    mapCtx.fillStyle = '#a97c50';
+    desertMesas.forEach((mesa) => {
+      const p = toMap(mesa.x, mesa.z);
+      mapCtx.beginPath();
+      mapCtx.arc(p.mx, p.mz, Math.max(2, mesa.radius * scale), 0, Math.PI * 2);
+      mapCtx.fill();
+    });
+  }
 
   // 道路(ルート66モードは南北にまっすぐ1本)
   if (ROUTE66_MODE) {
@@ -1701,6 +1998,19 @@ function drawMap() {
     mapCtx.beginPath();
     mapCtx.moveTo(p1.mx, p1.mz);
     mapCtx.lineTo(p2.mx, p2.mz);
+    mapCtx.stroke();
+  }
+
+  // 道路(マウンテンパスモードはヘアピンの折れ線)
+  if (MOUNTAIN_MODE && mountainRoadPoints) {
+    mapCtx.strokeStyle = '#555';
+    mapCtx.lineWidth = 3;
+    mapCtx.beginPath();
+    mountainRoadPoints.forEach((p, i) => {
+      const mp = toMap(p.x, p.z);
+      if (i === 0) mapCtx.moveTo(mp.mx, mp.mz);
+      else mapCtx.lineTo(mp.mx, mp.mz);
+    });
     mapCtx.stroke();
   }
 

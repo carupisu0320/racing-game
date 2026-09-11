@@ -152,24 +152,32 @@ const gc = groundClearance;
 const bodyStations = [
   { z: halfLen,            halfWidth: 0.10, bottomY: gc, topY: gc + 0.30 }, // 鼻先端(尖らせる)
   { z: halfLen - 0.30,     halfWidth: 0.62, bottomY: gc, topY: gc + 0.34 }, // フロントバンパー
-  { z: halfLen - 0.68,     halfWidth: 0.78, bottomY: gc, topY: gc + 0.42 }, // ボンネット付け根
-  { z: frontAxleZ + 0.34,  halfWidth: 0.80, bottomY: gc, topY: gc + 0.60, crossSection: fenderCrossSection }, // フロントフェンダー・立ち上がり
+  { z: halfLen - 0.62,     halfWidth: 0.76, bottomY: gc, topY: gc + 0.40 }, // ボンネット中間(なだらかに)
+  { z: frontAxleZ + 0.24,  halfWidth: 0.78, bottomY: gc, topY: gc + 0.50, crossSection: fenderCrossSection }, // フロントフェンダー・立ち上がり開始
+  { z: frontAxleZ + 0.10,  halfWidth: 0.90, bottomY: gc, topY: gc + 0.68, crossSection: fenderCrossSection }, // フロントフェンダー・中間(丸みを追加)
   { z: frontAxleZ,         halfWidth: 0.99, bottomY: gc, topY: gc + 0.80, crossSection: fenderCrossSection }, // フロントフェンダー・ピーク(タイヤを覆う)
-  { z: frontAxleZ - 0.34,  halfWidth: 0.80, bottomY: gc, topY: gc + 0.58, crossSection: fenderCrossSection }, // フロントフェンダー・立ち下がり
-  { z: 0.62,               halfWidth: 0.76, bottomY: gc, topY: gc + 0.58 }, // フェンダー〜Aピラー付近(通常断面)
-  // ここで断面がすぐ隣(0.04mしか離れていない)でboby→doorに切り替わるため、
+  { z: frontAxleZ - 0.16,  halfWidth: 0.90, bottomY: gc, topY: gc + 0.68, crossSection: fenderCrossSection }, // フロントフェンダー・中間(丸みを追加)
+  { z: frontAxleZ - 0.36,  halfWidth: 0.78, bottomY: gc, topY: gc + 0.58, crossSection: fenderCrossSection }, // フロントフェンダー・立ち下がり
+  { z: 0.62,               halfWidth: 0.76, bottomY: gc, topY: gc + 0.58 }, // フェンダー〜Aピラー付近(通常断面へなめらかに戻す)
+  // ここで断面がすぐ隣(0.04mしか離れていない)でbody→doorに切り替わるため、
   // 表面の傾きが急に変わり、黒い線を描かなくても「ここがドア前端」と分かる境界になる
   { z: 0.58,               halfWidth: 0.80, bottomY: gc, topY: gc + 0.57, crossSection: doorCrossSection }, // ドア前端(フロントホイールの少し後ろ)
   { z: 0.10,               halfWidth: 0.83, bottomY: gc, topY: gc + 0.55, crossSection: doorCrossSection }, // ドア中央(はっきり凹ませる)
   { z: -0.18,              halfWidth: 0.85, bottomY: gc, topY: gc + 0.56, crossSection: doorCrossSection }, // ドア後端
-  // ここも同様に0.04mだけ離してboby断面に戻し、ドア後端の境界を作る
-  { z: -0.22,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.57 }, // ドア後端の外側(インテーク手前、通常断面)
-  { z: -0.62,              halfWidth: 0.89, bottomY: gc, topY: gc + 0.58, crossSection: intakeCrossSection }, // サイドエアインテーク(絞り込んで開口)
-  { z: -0.95,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.56 }, // インテーク後端(リアフェンダーへ膨らみ始める)
+  // ここも同様に0.04mだけ離してbody断面に戻し、ドア後端の境界を作る
+  { z: -0.22,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.57 }, // ドア後端の外側(通常断面へ)
+  { z: -0.38,              halfWidth: 0.87, bottomY: gc, topY: gc + 0.68 }, // サイドインテーク手前(なめらかに近づく)
+  // インテークも前後とも0.05mだけ離してintakeCrossSectionに出入りさせ、開口の境界をはっきりさせる
+  { z: -0.43,              halfWidth: 0.88, bottomY: gc, topY: gc + 0.685, crossSection: intakeCrossSection }, // サイドインテーク開始
+  { z: -0.68,              halfWidth: 0.90, bottomY: gc, topY: gc + 0.69, crossSection: intakeCrossSection },  // サイドインテーク中央
+  { z: -0.73,              halfWidth: 0.87, bottomY: gc, topY: gc + 0.68 }, // サイドインテーク終了(通常断面へ)
+  { z: -0.95,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.67 }, // リアフェンダーへなめらかに膨らみ始める
   { z: rearAxleZ + 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.62, crossSection: fenderCrossSection }, // リアフェンダー・立ち上がり
+  { z: rearAxleZ + 0.16,   halfWidth: 0.92, bottomY: gc, topY: gc + 0.75, crossSection: fenderCrossSection }, // リアフェンダー・中間(丸みを追加)
   { z: rearAxleZ,          halfWidth: 0.99, bottomY: gc, topY: gc + 0.84, crossSection: fenderCrossSection }, // リアフェンダー・ピーク(フロントより大きく)
+  { z: rearAxleZ - 0.16,   halfWidth: 0.92, bottomY: gc, topY: gc + 0.75, crossSection: fenderCrossSection }, // リアフェンダー・中間(丸みを追加)
   { z: rearAxleZ - 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.60, crossSection: fenderCrossSection }, // リアフェンダー・立ち下がり
-  { z: -1.95,              halfWidth: 0.60, bottomY: gc, topY: gc + 0.46 }, // リアハンチ
+  { z: -2.05,              halfWidth: 0.55, bottomY: gc, topY: gc + 0.50 }, // リアハンチ(なだらかに)
   { z: -halfLen,           halfWidth: 0.40, bottomY: gc, topY: gc + 0.42 }  // テールエンド
 ];
 const bodyLoft = buildLoft(bodyStations, bodyCrossSection, paintMat);
@@ -248,7 +256,7 @@ car.add(grille);
     new THREE.BoxGeometry(0.02, 0.14, 0.32),
     new THREE.MeshStandardMaterial({ color: 0x050505 })
   );
-  ventShade.position.set(sign * 0.42, gc + 0.24, -0.62);
+  ventShade.position.set(sign * 0.42, gc + 0.24, -0.55);
   car.add(ventShade);
 });
 

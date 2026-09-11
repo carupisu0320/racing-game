@@ -117,6 +117,27 @@ const fenderCrossSection = [
   [-0.60, 0.20], [-0.55, 0.02]
 ];
 
+// ドア部分用の断面(bodyCrossSectionをベースに、中央をわずかに凹ませて
+// 「平らな板」ではなく彫刻的な面にする)
+const doorCrossSection = [
+  [0.0, 0.0], [0.58, 0.02], [0.90, 0.16], [0.88, 0.42],
+  [0.78, 0.68], [0.5, 0.92], [0.0, 1.0],
+  [-0.5, 0.92], [-0.78, 0.68], [-0.88, 0.42],
+  [-0.90, 0.16], [-0.58, 0.02]
+];
+
+// サイドエアインテーク用の断面(タイヤ中央高さ相当の帯だけを大きく絞り込み、
+// ボディに切り込まれた開口部のように見せる)
+const intakeCrossSection = [
+  [0.0, 0.0], [0.55, 0.02], [0.80, 0.16],
+  [0.45, 0.40],
+  [0.55, 0.62], [0.85, 0.86],
+  [0.0, 1.0],
+  [-0.85, 0.86], [-0.55, 0.62],
+  [-0.45, 0.40],
+  [-0.80, 0.16], [-0.55, 0.02]
+];
+
 // ----------------------------------------------------------
 // 1. 車体本体(ロワーボディ)のロフト
 //    鼻先 → フロントフェンダー(前輪位置で最大幅) → ドア(くびれ) →
@@ -135,8 +156,11 @@ const bodyStations = [
   { z: frontAxleZ,         halfWidth: 0.99, bottomY: gc, topY: gc + 0.80, crossSection: fenderCrossSection }, // フロントフェンダー・ピーク(タイヤを覆う)
   { z: frontAxleZ - 0.34,  halfWidth: 0.80, bottomY: gc, topY: gc + 0.58, crossSection: fenderCrossSection }, // フロントフェンダー・立ち下がり
   { z: 0.75,               halfWidth: 0.74, bottomY: gc, topY: gc + 0.60 }, // カウル/フロントガラス基部
-  { z: 0.10,               halfWidth: 0.82, bottomY: gc, topY: gc + 0.54 }, // ドア中央(くびれ)
-  { z: -0.55,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.56 }, // サイドインテーク付近
+  { z: 0.45,               halfWidth: 0.80, bottomY: gc, topY: gc + 0.58, crossSection: doorCrossSection }, // ドア前端(フェンダーから滑らかに)
+  { z: 0.10,               halfWidth: 0.82, bottomY: gc, topY: gc + 0.55, crossSection: doorCrossSection }, // ドア中央(わずかに凹ませる)
+  { z: -0.28,              halfWidth: 0.85, bottomY: gc, topY: gc + 0.56, crossSection: doorCrossSection }, // ドア後端(インテークへ)
+  { z: -0.62,              halfWidth: 0.89, bottomY: gc, topY: gc + 0.58, crossSection: intakeCrossSection }, // サイドエアインテーク(絞り込んで開口)
+  { z: -0.95,              halfWidth: 0.86, bottomY: gc, topY: gc + 0.56 }, // インテーク後端(リアフェンダーへ膨らみ始める)
   { z: rearAxleZ + 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.62, crossSection: fenderCrossSection }, // リアフェンダー・立ち上がり
   { z: rearAxleZ,          halfWidth: 0.99, bottomY: gc, topY: gc + 0.84, crossSection: fenderCrossSection }, // リアフェンダー・ピーク(フロントより大きく)
   { z: rearAxleZ - 0.36,   halfWidth: 0.82, bottomY: gc, topY: gc + 0.60, crossSection: fenderCrossSection }, // リアフェンダー・立ち下がり
@@ -151,14 +175,14 @@ car.add(bodyLoft);
 //    カウル(低い)→ フロントガラス(寝かせて立ち上がる)→ ルーフ → リアガラス、まで1本の面
 // ----------------------------------------------------------
 const cabinCrossSection = [
-  [0.0, 0.0], [0.65, 0.05], [0.98, 0.4], [0.7, 0.85], [0.0, 1.0],
-  [-0.7, 0.85], [-0.98, 0.4], [-0.65, 0.05]
+  [0.0, 0.0], [0.62, 0.05], [0.92, 0.4], [0.62, 0.85], [0.0, 1.0],
+  [-0.62, 0.85], [-0.92, 0.4], [-0.62, 0.05]
 ];
 const cabinStations = [
-  { z: 0.78,  halfWidth: 0.58, bottomY: gc + 0.55, topY: gc + 0.62 }, // カウル(フロントガラス下端)
-  { z: 0.20,  halfWidth: 0.66, bottomY: gc + 0.60, topY: gc + 1.02 }, // フロントガラス上端/ルーフ前端(寝かせた角度はここの傾きで表現)
-  { z: -0.55, halfWidth: 0.66, bottomY: gc + 1.00, topY: gc + 1.05 }, // ルーフ後端
-  { z: -1.05, halfWidth: 0.50, bottomY: gc + 0.62, topY: gc + 0.82 }  // リアガラス下端(エンジンルーム上)
+  { z: 0.80,  halfWidth: 0.55, bottomY: gc + 0.52, topY: gc + 0.60 }, // カウル(フロントガラス下端、ウエストラインを下げる)
+  { z: 0.20,  halfWidth: 0.63, bottomY: gc + 0.58, topY: gc + 0.98 }, // フロントガラス上端/ルーフ前端(寝かせた角度はここの傾きで表現)
+  { z: -0.55, halfWidth: 0.63, bottomY: gc + 0.96, topY: gc + 1.00 }, // ルーフ後端(低く)
+  { z: -1.05, halfWidth: 0.48, bottomY: gc + 0.60, topY: gc + 0.80 }  // リアガラス下端(エンジンルーム上)
 ];
 const cabinLoft = buildLoft(cabinStations, cabinCrossSection, cabinMat);
 car.add(cabinLoft);
@@ -196,37 +220,24 @@ car.add(grille);
 });
 
 // ----------------------------------------------------------
-// 4. ドア(シャットライン・ハンドル・サイドエアインテーク)
-//    ボディはロフトで一体化しているので、ここでは「継ぎ目の線」と
-//    「凹んだインテーク」だけを面に貼り付けて表現する
+// 4. ドア細部(フラッシュ型ハンドルのみ)。
+//    パネルの境界線は黒い線を描くのではなく、doorCrossSection/intakeCrossSectionによる
+//    ボディ形状そのものの変化で表現しているため、ここでは最小限の装飾だけを追加する。
 // ----------------------------------------------------------
 [-1, 1].forEach((sign) => {
-  const doorX = 0.83;
-  const frontShutline = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.4, 0.015), trimMat);
-  frontShutline.position.set(sign * doorX, gc + 0.42, 0.62);
-  car.add(frontShutline);
+  // フラッシュタイプのドアハンドル(ボディに沿う小さなくぼみ+短いバー)
+  const handleRecess = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.035, 0.14), new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.4, roughness: 0.5 }));
+  handleRecess.position.set(sign * 0.83, gc + 0.58, 0.08);
+  car.add(handleRecess);
 
-  const rearShutline = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.4, 0.015), trimMat);
-  rearShutline.position.set(sign * doorX, gc + 0.42, -0.55);
-  car.add(rearShutline);
-
-  const doorHandle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.16), trimMat);
-  doorHandle.position.set(sign * doorX, gc + 0.6, 0.05);
-  car.add(doorHandle);
-
-  // ドア後方の大型サイドエアインテーク(リアフェンダー手前)。
-  // 前を浅く・後ろを深くえぐるように角度を付け、単なる黒い板ではなく
-  // ボディに切り込まれた開口部に見えるようにする
-  const intakeGroup = new THREE.Group();
-  const intakeOuter = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.48), trimMat);
-  intakeOuter.position.set(0, 0, 0);
-  intakeGroup.add(intakeOuter);
-  const intakeSlot = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.36), new THREE.MeshStandardMaterial({ color: 0x030303 }));
-  intakeSlot.position.set(sign * 0.02, 0, 0.02);
-  intakeGroup.add(intakeSlot);
-  intakeGroup.position.set(sign * 0.79, gc + 0.42, -0.9);
-  intakeGroup.rotation.y = sign * 0.12; // 前方がボディに沿い、後方がえぐれて見える角度
-  car.add(intakeGroup);
+  // サイドエアインテークの奥の陰(intakeCrossSectionで凹ませた開口の中に、
+  // 控えめなベントの陰を1枚だけ置く。外側に貼り付けた板にはしない)
+  const ventShade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.14, 0.32),
+    new THREE.MeshStandardMaterial({ color: 0x050505 })
+  );
+  ventShade.position.set(sign * 0.42, gc + 0.24, -0.62);
+  car.add(ventShade);
 });
 
 // ----------------------------------------------------------

@@ -423,15 +423,15 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // Recessed dark opening behind the door.
   [-1, 1].forEach(sign => {
+    const intakeShape = new THREE.Shape();
+    intakeShape.moveTo(-0.25, -0.11);
+    intakeShape.lineTo(0.23, -0.08);
+    intakeShape.lineTo(0.30, 0.09);
+    intakeShape.lineTo(-0.16, 0.13);
+    intakeShape.lineTo(-0.25, -0.11);
+
     const intake = new THREE.Mesh(
-      new THREE.ShapeGeometry(
-        new THREE.Shape()
-          .moveTo(-0.25, -0.11)
-          .lineTo(0.23, -0.08)
-          .lineTo(0.30, 0.09)
-          .lineTo(-0.16, 0.13)
-          .lineTo(-0.25, -0.11)
-      ),
+      new THREE.ShapeGeometry(intakeShape),
       blackMat
     );
 
@@ -536,26 +536,30 @@ function buildKazeR01(paintColorHex) {
   car.add(frontFascia);
 
   // Central black opening and two smaller side openings.
+  const centerOpeningShape = new THREE.Shape();
+  centerOpeningShape.moveTo(-0.34, 0.13);
+  centerOpeningShape.lineTo(0.34, 0.13);
+  centerOpeningShape.lineTo(0.25, 0.03);
+  centerOpeningShape.lineTo(-0.25, 0.03);
+  centerOpeningShape.closePath();
+
   const centerOpening = new THREE.Mesh(
-    new THREE.ShapeGeometry(new THREE.Shape()
-      .moveTo(-0.34, 0.13)
-      .lineTo(0.34, 0.13)
-      .lineTo(0.25, 0.03)
-      .lineTo(-0.25, 0.03)
-      .closePath()),
+    new THREE.ShapeGeometry(centerOpeningShape),
     blackMat
   );
   centerOpening.position.set(0, 0.10, 2.405);
   car.add(centerOpening);
 
   [-1, 1].forEach(sign => {
+    const sideOpeningShape = new THREE.Shape();
+    sideOpeningShape.moveTo(0, 0.10);
+    sideOpeningShape.lineTo(0.23, 0.18);
+    sideOpeningShape.lineTo(0.19, 0.04);
+    sideOpeningShape.lineTo(0.04, 0.02);
+    sideOpeningShape.closePath();
+
     const sideOpening = new THREE.Mesh(
-      new THREE.ShapeGeometry(new THREE.Shape()
-        .moveTo(0, 0.10)
-        .lineTo(0.23, 0.18)
-        .lineTo(0.19, 0.04)
-        .lineTo(0.04, 0.02)
-        .closePath()),
+      new THREE.ShapeGeometry(sideOpeningShape),
       blackMat
     );
     sideOpening.position.set(sign * 0.58, 0.10, 2.405);

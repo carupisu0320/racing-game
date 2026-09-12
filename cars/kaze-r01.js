@@ -4,7 +4,7 @@
 // Coordinate: +Z = front, +Y = up, +/-X = left/right
 //
 // Design goals:
-// - 4.52m x 1.98m x approx. 1.16m
+// - approx. 4.92m x 2.14m x 1.25m
 // - Wheelbase 2.72m
 // - Front track 1.69m / Rear track 1.67m
 // - Low-midship supercar proportions
@@ -305,7 +305,7 @@ function buildKazeR01(paintColorHex) {
     { z:  2.02, halfWidth: 0.61, bottomY: groundClearance, topY: 0.40 },
     { z:  1.70, halfWidth: 0.78, bottomY: groundClearance, topY: 0.49 },
     { z:  1.48, halfWidth: 0.86, bottomY: groundClearance, topY: 0.61 },
-    { z:  1.37, halfWidth: 0.89, bottomY: groundClearance, topY: 0.72 },
+    { z:  1.37, halfWidth: 0.94, bottomY: groundClearance, topY: 0.72 },
     { z:  1.10, halfWidth: 0.84, bottomY: groundClearance, topY: 0.66 },
     { z:  0.70, halfWidth: 0.82, bottomY: groundClearance, topY: 0.62 },
     { z:  0.30, halfWidth: 0.84, bottomY: groundClearance, topY: 0.60 },
@@ -313,7 +313,7 @@ function buildKazeR01(paintColorHex) {
     { z: -0.48, halfWidth: 0.87, bottomY: groundClearance, topY: 0.63 },
     { z: -0.82, halfWidth: 0.94, bottomY: groundClearance, topY: 0.70 },
     { z: -1.12, halfWidth: 1.00, bottomY: groundClearance, topY: 0.79 },
-    { z: -1.47, halfWidth: 1.02, bottomY: groundClearance, topY: 0.84 },
+    { z: -1.47, halfWidth: 1.06, bottomY: groundClearance, topY: 0.84 },
     { z: -1.76, halfWidth: 0.93, bottomY: groundClearance, topY: 0.70 },
     { z: -2.05, halfWidth: 0.77, bottomY: groundClearance, topY: 0.59 },
     { z: -2.28, halfWidth: 0.58, bottomY: groundClearance, topY: 0.52 },
@@ -475,21 +475,17 @@ function buildKazeR01(paintColorHex) {
   const cabinStations = [
     { z:  0.92, halfWidth: 0.43, bottomY: 0.66, topY: 0.71 },
     { z:  0.62, halfWidth: 0.53, bottomY: 0.66, topY: 0.94 },
-    { z:  0.28, halfWidth: 0.59, bottomY: 0.72, topY: 1.10 },
-    { z: -0.12, halfWidth: 0.61, bottomY: 0.92, topY: 1.14 },
-    { z: -0.50, halfWidth: 0.57, bottomY: 0.88, topY: 1.09 },
+    { z:  0.28, halfWidth: 0.56, bottomY: 0.72, topY: 1.06 },
+    { z: -0.12, halfWidth: 0.58, bottomY: 0.90, topY: 1.10 },
+    { z: -0.50, halfWidth: 0.54, bottomY: 0.86, topY: 1.05 },
     { z: -0.84, halfWidth: 0.47, bottomY: 0.74, topY: 0.96 },
     { z: -1.02, halfWidth: 0.36, bottomY: 0.66, topY: 0.82 }
   ];
   const cabin = buildLoft(cabinStations, cabinCrossSection, glassMat);
   car.add(cabin);
 
-  // Roof surround
-  addBox(
-    1.10, 0.055, 1.05,
-    blackMat,
-    0, 1.135, -0.08
-  );
+  // Roof: the cabin loft itself is the single roof/glass volume.
+  // Do not add a second rectangular roof panel here.
 
   // A-pillars, kept thin so the cabin remains visually low.
   [-1, 1].forEach(sign => {
@@ -516,43 +512,82 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 7. Front nose / splitter / headlights
   // --------------------------------------------------------
-  addBox(
-    1.18, 0.045, 0.20,
-    carbonMat,
-    0, groundClearance + 0.015, 2.18
-  );
+  // Low, wide front fascia. The center stays narrow while the corners
+  // flare outward toward the front wheels.
+  const frontFasciaShape = new THREE.Shape();
+  frontFasciaShape.moveTo(-0.78, 0.18);
+  frontFasciaShape.lineTo(-0.54, 0.39);
+  frontFasciaShape.lineTo(-0.18, 0.48);
+  frontFasciaShape.lineTo(0.18, 0.48);
+  frontFasciaShape.lineTo(0.54, 0.39);
+  frontFasciaShape.lineTo(0.78, 0.18);
+  frontFasciaShape.lineTo(0.63, 0.08);
+  frontFasciaShape.lineTo(0.26, 0.04);
+  frontFasciaShape.lineTo(0, 0.075);
+  frontFasciaShape.lineTo(-0.26, 0.04);
+  frontFasciaShape.lineTo(-0.63, 0.08);
+  frontFasciaShape.closePath();
 
-  // Central lower intake
-  addTrapezoidPanel(
-    0.58, 0.78, 0.16, 0.055,
-    blackMat,
-    0, groundClearance + 0.16, 2.15
+  const frontFascia = new THREE.Mesh(
+    new THREE.ShapeGeometry(frontFasciaShape),
+    paintMat
   );
+  frontFascia.position.set(0, 0.10, 2.39);
+  car.add(frontFascia);
+
+  // Central black opening and two smaller side openings.
+  const centerOpening = new THREE.Mesh(
+    new THREE.ShapeGeometry(new THREE.Shape()
+      .moveTo(-0.34, 0.13)
+      .lineTo(0.34, 0.13)
+      .lineTo(0.25, 0.03)
+      .lineTo(-0.25, 0.03)
+      .closePath()),
+    blackMat
+  );
+  centerOpening.position.set(0, 0.10, 2.405);
+  car.add(centerOpening);
 
   [-1, 1].forEach(sign => {
-    const pts = sign > 0
-      ? [0.24,0.38, 0.82,0.43, 0.77,0.34, 0.30,0.31]
-      : [-0.24,0.38, -0.82,0.43, -0.77,0.34, -0.30,0.31];
+    const sideOpening = new THREE.Mesh(
+      new THREE.ShapeGeometry(new THREE.Shape()
+        .moveTo(0, 0.10)
+        .lineTo(0.23, 0.18)
+        .lineTo(0.19, 0.04)
+        .lineTo(0.04, 0.02)
+        .closePath()),
+      blackMat
+    );
+    sideOpening.position.set(sign * 0.58, 0.10, 2.405);
+    sideOpening.scale.x = sign;
+    car.add(sideOpening);
+  });
+
+  // Thin, swept LED headlights.
+  [-1, 1].forEach(sign => {
     const shape = new THREE.Shape();
-    shape.moveTo(pts[0], pts[1]);
-    shape.lineTo(pts[2], pts[3]);
-    shape.lineTo(pts[4], pts[5]);
-    shape.lineTo(pts[6], pts[7]);
+    shape.moveTo(0, 0.36);
+    shape.lineTo(0.46, 0.42);
+    shape.lineTo(0.58, 0.34);
+    shape.lineTo(0.19, 0.30);
     shape.closePath();
+
     const lamp = new THREE.Mesh(new THREE.ShapeGeometry(shape), frontLightMat);
-    lamp.position.z = 1.99;
-    lamp.position.y = 0.0;
-    lamp.rotation.y = 0;
+    lamp.position.set(sign * 0.05, 0.0, 2.415);
+    lamp.scale.x = sign;
     car.add(lamp);
 
     const led = new THREE.Mesh(
-      new THREE.BoxGeometry(0.36, 0.012, 0.018),
+      new THREE.BoxGeometry(0.42, 0.014, 0.022),
       frontLightMat
     );
-    led.position.set(sign * 0.57, 0.355, 1.975);
+    led.position.set(sign * 0.46, 0.365, 2.40);
     led.rotation.y = sign * 0.18;
     car.add(led);
   });
+
+  // Low front splitter.
+  addBox(1.62, 0.045, 0.16, carbonMat, 0, groundClearance + 0.015, 2.42);
 
   // --------------------------------------------------------
   // 8. Proper wheel arches
@@ -562,41 +597,34 @@ function buildKazeR01(paintColorHex) {
   // painted arch is placed around the upper half of each tire.
   // This is much closer to a real fender silhouette.
   function addWheelArch(sign, axleZ, radius, rear = false) {
-    const archRadius = radius + (rear ? 0.055 : 0.048);
+    // The old version placed a white tube far outside the tire, which
+    // looked like a floating hoop. Keep the wheel opening tight to the
+    // tire instead. This is only a subtle painted lip.
+    const wheelWidth = rear ? 0.279 : 0.241;
+    const outerX = sign * ((rear ? halfTrackRear : halfTrackFront) + wheelWidth * 0.52 + 0.012);
+    const archRadius = radius + (rear ? 0.018 : 0.016);
     const points = [];
-
-    // Upper semicircle in the Y-Z plane.  The ends stop below
-    // the wheel center so the tire remains visibly open at the side.
-    const start = Math.PI * 0.92;
-    const end = Math.PI * 0.08;
-    const count = 20;
+    const startA = Math.PI * 0.88;
+    const endA = Math.PI * 0.12;
+    const count = 18;
 
     for (let i = 0; i <= count; i++) {
-      const a = start + (end - start) * (i / count);
-      const z = axleZ + Math.cos(a) * archRadius;
-      const y = radius + Math.sin(a) * archRadius;
+      const a = startA + (endA - startA) * (i / count);
       points.push(new THREE.Vector3(
-        sign * (halfTrackFront + 0.315),
-        y,
-        z
+        outerX,
+        radius + Math.sin(a) * archRadius,
+        axleZ + Math.cos(a) * archRadius
       ));
     }
 
-    // Rear axle uses its own track offset.
-    if (rear) {
-      points.forEach(pt => {
-        pt.x = sign * (halfTrackRear + 0.325);
-      });
-    }
-
     const curve = new THREE.CatmullRomCurve3(points);
-    const tube = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 32, 0.032, 8, false),
-      paintMat
+    const lip = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 28, 0.018, 6, false),
+      paintDarkMat
     );
-    tube.castShadow = true;
-    tube.receiveShadow = true;
-    car.add(tube);
+    lip.castShadow = true;
+    lip.receiveShadow = true;
+    car.add(lip);
   }
 
   [-1, 1].forEach(sign => {

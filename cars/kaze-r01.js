@@ -357,24 +357,31 @@ function buildKazeR01(paintColorHex) {
   car.add(shoulder);
 
   // --------------------------------------------------------
-  // 3. Strong SINGLE character line
+  // 3. Strong SINGLE character line / front-to-rear body crease
   // --------------------------------------------------------
+  // The line is placed ON the body surface and starts at the nose,
+  // rises naturally through the front fender, stays almost level
+  // through the door, then climbs into the rear fender.
   function addCharacterLine(sign) {
     const stations = [
-      { z:  1.54, xOuter: sign * 0.735, xRidge: sign * 0.765, xInner: sign * 0.735, yOuter: 0.57, yRidge: 0.592, yInner: 0.57 },
-      { z:  1.34, xOuter: sign * 0.805, xRidge: sign * 0.840, xInner: sign * 0.805, yOuter: 0.62, yRidge: 0.645, yInner: 0.62 },
-      { z:  1.08, xOuter: sign * 0.790, xRidge: sign * 0.825, xInner: sign * 0.790, yOuter: 0.585, yRidge: 0.61, yInner: 0.585 },
-      { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.785, yOuter: 0.56, yRidge: 0.585, yInner: 0.56 },
-      { z:  0.42, xOuter: sign * 0.800, xRidge: sign * 0.825, xInner: sign * 0.800, yOuter: 0.545, yRidge: 0.568, yInner: 0.545 },
-      { z:  0.05, xOuter: sign * 0.805, xRidge: sign * 0.830, xInner: sign * 0.805, yOuter: 0.54, yRidge: 0.562, yInner: 0.54 },
-      { z: -0.34, xOuter: sign * 0.810, xRidge: sign * 0.838, xInner: sign * 0.810, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
-      { z: -0.65, xOuter: sign * 0.820, xRidge: sign * 0.850, xInner: sign * 0.820, yOuter: 0.59, yRidge: 0.615, yInner: 0.59 },
-      { z: -0.94, xOuter: sign * 0.825, xRidge: sign * 0.860, xInner: sign * 0.825, yOuter: 0.625, yRidge: 0.655, yInner: 0.625 },
-      { z: -1.20, xOuter: sign * 0.835, xRidge: sign * 0.875, xInner: sign * 0.835, yOuter: 0.67, yRidge: 0.70, yInner: 0.67 },
-      { z: -1.48, xOuter: sign * 0.850, xRidge: sign * 0.890, xInner: sign * 0.850, yOuter: 0.73, yRidge: 0.765, yInner: 0.73 },
-      { z: -1.72, xOuter: sign * 0.800, xRidge: sign * 0.835, xInner: sign * 0.800, yOuter: 0.65, yRidge: 0.675, yInner: 0.65 }
+      { z:  2.22, xOuter: sign * 0.24, xRidge: sign * 0.28, xInner: sign * 0.22, yOuter: 0.34, yRidge: 0.355, yInner: 0.34 },
+      { z:  1.98, xOuter: sign * 0.46, xRidge: sign * 0.50, xInner: sign * 0.45, yOuter: 0.40, yRidge: 0.418, yInner: 0.40 },
+      { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.47, yRidge: 0.49, yInner: 0.47 },
+      { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.54, yRidge: 0.565, yInner: 0.54 },
+      { z:  1.15, xOuter: sign * 0.79, xRidge: sign * 0.825, xInner: sign * 0.78, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
+      { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.775, yOuter: 0.535, yRidge: 0.558, yInner: 0.535 },
+      { z:  0.40, xOuter: sign * 0.79, xRidge: sign * 0.82, xInner: sign * 0.78, yOuter: 0.525, yRidge: 0.548, yInner: 0.525 },
+      { z:  0.02, xOuter: sign * 0.80, xRidge: sign * 0.832, xInner: sign * 0.79, yOuter: 0.53, yRidge: 0.555, yInner: 0.53 },
+      { z: -0.36, xOuter: sign * 0.815, xRidge: sign * 0.85, xInner: sign * 0.805, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
+      { z: -0.72, xOuter: sign * 0.83, xRidge: sign * 0.87, xInner: sign * 0.82, yOuter: 0.585, yRidge: 0.615, yInner: 0.585 },
+      { z: -1.05, xOuter: sign * 0.85, xRidge: sign * 0.89, xInner: sign * 0.84, yOuter: 0.62, yRidge: 0.652, yInner: 0.62 },
+      { z: -1.32, xOuter: sign * 0.87, xRidge: sign * 0.91, xInner: sign * 0.86, yOuter: 0.66, yRidge: 0.695, yInner: 0.66 },
+      { z: -1.51, xOuter: sign * 0.88, xRidge: sign * 0.92, xInner: sign * 0.87, yOuter: 0.69, yRidge: 0.73, yInner: 0.69 },
+      { z: -1.73, xOuter: sign * 0.82, xRidge: sign * 0.855, xInner: sign * 0.81, yOuter: 0.63, yRidge: 0.66, yInner: 0.63 }
     ];
 
+    // Shallow body-surface ridge; same paint as body so it reads as a
+    // change in surface rather than an added black/red strip.
     const line = buildSurfaceStrip(stations, paintMat);
     line.renderOrder = 2;
     car.add(line);
@@ -384,7 +391,62 @@ function buildKazeR01(paintColorHex) {
   addCharacterLine(1);
 
   // --------------------------------------------------------
-  // 4. Lower side sill
+  // 4. Integrated wheel-fender lips
+  // --------------------------------------------------------
+  // The tire should visually emerge from the body instead of appearing
+  // pasted outside it.  The arch follows the actual tire radius and
+  // sits immediately at the tire's outer face.
+  function addIntegratedWheelArch(sign, axleZ, radius, rear = false) {
+    const tireWidth = rear ? 0.279 : 0.241;
+    const x = sign * ((rear ? halfTrackRear : halfTrackFront) + tireWidth * 0.5 + 0.004);
+    const r = radius + 0.020;
+    const centerY = radius + groundClearance;
+
+    const points = [];
+    const steps = 20;
+    // From lower-front to lower-rear around the TOP of the wheel.
+    for (let i = 0; i <= steps; i++) {
+      const a = Math.PI * (1 - i / steps);
+      points.push(new THREE.Vector3(
+        x,
+        centerY + Math.sin(a) * r,
+        axleZ + Math.cos(a) * r
+      ));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points);
+    const arch = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 24, 0.020, 8, false),
+      paintMat
+    );
+    arch.castShadow = true;
+    arch.receiveShadow = true;
+    car.add(arch);
+
+    // Small painted connector pieces visually join the arch to the
+    // lower side body so it does not read as a floating ring.
+    const connectorY = centerY - 0.02;
+    [-1, 1].forEach(endSign => {
+      const connector = new THREE.Mesh(
+        new THREE.BoxGeometry(0.028, 0.12, 0.055),
+        paintMat
+      );
+      connector.position.set(
+        x,
+        connectorY + 0.02,
+        axleZ + endSign * r * 0.86
+      );
+      car.add(connector);
+    });
+  }
+
+  [-1, 1].forEach(sign => {
+    addIntegratedWheelArch(sign, frontAxleZ, frontWheelRadius, false);
+    addIntegratedWheelArch(sign, rearAxleZ, rearWheelRadius, true);
+  });
+
+  // --------------------------------------------------------
+  // 5. Lower side sill
   // --------------------------------------------------------
   [-1, 1].forEach(sign => {
     const sill = addTrapezoidPanel(
@@ -399,7 +461,7 @@ function buildKazeR01(paintColorHex) {
   });
 
   // --------------------------------------------------------
-  // 5. Side intake
+  // 6. Side intake
   // --------------------------------------------------------
   // Recessed dark opening behind the door.
   [-1, 1].forEach(sign => {
@@ -437,7 +499,7 @@ function buildKazeR01(paintColorHex) {
   });
 
   // --------------------------------------------------------
-  // 6. Cabin
+  // 7. Cabin
   // --------------------------------------------------------
   const cabinCrossSection = [
     [0.00, 0.00],
@@ -464,12 +526,8 @@ function buildKazeR01(paintColorHex) {
   const cabin = buildLoft(cabinStations, cabinCrossSection, glassMat);
   car.add(cabin);
 
-  // Roof surround
-  addBox(
-    1.02, 0.045, 0.88,
-    blackMat,
-    0, 1.115, -0.20
-  );
+  // Single roof: the cabin loft itself defines the roof.
+  // No separate rectangular roof panel is added here.
 
   // A-pillars, kept thin so the cabin remains visually low.
   [-1, 1].forEach(sign => {
@@ -494,7 +552,7 @@ function buildKazeR01(paintColorHex) {
   });
 
   // --------------------------------------------------------
-  // 7. Front nose / splitter / headlights
+  // 8. Front nose / splitter / headlights
   // --------------------------------------------------------
   addBox(
     0.90, 0.04, 0.18,
@@ -538,19 +596,22 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 9. Rear body / diffuser / tail
   // --------------------------------------------------------
+  // Keep all rear lighting physically attached to the rear body.
+  // The lamp sits just above the bumper surface instead of floating
+  // behind the car.
   addBox(
-    1.02, 0.22, 0.10,
-    carbonMat,
-    0, groundClearance + 0.18, -2.20
+    1.62, 0.16, 0.09,
+    blackMat,
+    0, 0.38, -2.24
   );
 
   addBox(
-    0.82, 0.055, 0.055,
+    1.18, 0.038, 0.030,
     rearLightMat,
-    0, groundClearance + 0.48, -2.235
+    0, 0.575, -2.292
   );
 
-  // Rear diffuser with five fins
+  // Rear diffuser
   addTrapezoidPanel(
     0.72, 0.96, 0.18, 0.28,
     carbonMat,
@@ -566,6 +627,25 @@ function buildKazeR01(paintColorHex) {
       -2.17
     );
   }
+
+  // Twin round exhaust outlets
+  [-1, 1].forEach(sign => {
+    const tip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.095, 0.095, 0.065, 20),
+      rimMat
+    );
+    tip.rotation.x = Math.PI / 2;
+    tip.position.set(sign * 0.58, 0.33, -2.285);
+    car.add(tip);
+
+    const inner = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.062, 0.062, 0.068, 20),
+      blackMat
+    );
+    inner.rotation.x = Math.PI / 2;
+    inner.position.set(sign * 0.58, 0.33, -2.290);
+    car.add(inner);
+  });
 
   // --------------------------------------------------------
   // 10. Rear wing

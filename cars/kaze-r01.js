@@ -331,16 +331,16 @@ function buildKazeR01(paintColorHex) {
   // has real volume and does not look like a thin slab with the tires
   // sticking out the sides.
   const bodyStations = [
-    { z:  2.26, halfWidth: 0.22, bottomY: groundClearance, topY: 0.40 },
-    { z:  2.18, halfWidth: 0.32, bottomY: groundClearance, topY: 0.42 },
-    { z:  2.10, halfWidth: 0.42, bottomY: groundClearance, topY: 0.435 },
-    { z:  2.00, halfWidth: 0.52, bottomY: groundClearance, topY: 0.45 },
-    { z:  1.90, halfWidth: 0.62, bottomY: groundClearance, topY: 0.465 },
-    { z:  1.76, halfWidth: 0.70, bottomY: groundClearance, topY: 0.485 },
-    { z:  1.62, halfWidth: 0.78, bottomY: groundClearance, topY: 0.51 },
-    { z:  1.535, halfWidth: 0.82, bottomY: groundClearance, topY: 0.545 },
-    { z:  1.45, halfWidth: 0.86, bottomY: groundClearance, topY: 0.58 },
-    { z:  1.33, halfWidth: 0.905, bottomY: groundClearance, topY: 0.65 },
+    { z:  2.26, halfWidth: 0.26, bottomY: groundClearance, topY: 0.52 },
+    { z:  2.18, halfWidth: 0.36, bottomY: groundClearance, topY: 0.53 },
+    { z:  2.10, halfWidth: 0.45, bottomY: groundClearance, topY: 0.535 },
+    { z:  2.00, halfWidth: 0.54, bottomY: groundClearance, topY: 0.545 },
+    { z:  1.90, halfWidth: 0.63, bottomY: groundClearance, topY: 0.555 },
+    { z:  1.76, halfWidth: 0.71, bottomY: groundClearance, topY: 0.565 },
+    { z:  1.62, halfWidth: 0.79, bottomY: groundClearance, topY: 0.58 },
+    { z:  1.535, halfWidth: 0.83, bottomY: groundClearance, topY: 0.60 },
+    { z:  1.45, halfWidth: 0.87, bottomY: groundClearance, topY: 0.625 },
+    { z:  1.33, halfWidth: 0.91, bottomY: groundClearance, topY: 0.675 },
     { z:  1.21, halfWidth: 0.95, bottomY: groundClearance, topY: 0.72 },
     { z:  0.96, halfWidth: 0.91, bottomY: groundClearance, topY: 0.70 },
     { z:  0.70, halfWidth: 0.89, bottomY: groundClearance, topY: 0.64 },
@@ -435,10 +435,10 @@ function buildKazeR01(paintColorHex) {
   // through the door, then climbs into the rear fender.
   function addCharacterLine(sign) {
     const stations = [
-      { z:  2.22, xOuter: sign * 0.24, xRidge: sign * 0.28, xInner: sign * 0.22, yOuter: 0.40, yRidge: 0.415, yInner: 0.40 },
-      { z:  1.98, xOuter: sign * 0.46, xRidge: sign * 0.50, xInner: sign * 0.45, yOuter: 0.46, yRidge: 0.478, yInner: 0.46 },
-      { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.525, yRidge: 0.545, yInner: 0.525 },
-      { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.57, yRidge: 0.595, yInner: 0.57 },
+      { z:  2.22, xOuter: sign * 0.24, xRidge: sign * 0.28, xInner: sign * 0.22, yOuter: 0.52, yRidge: 0.535, yInner: 0.52 },
+      { z:  1.98, xOuter: sign * 0.46, xRidge: sign * 0.50, xInner: sign * 0.45, yOuter: 0.55, yRidge: 0.568, yInner: 0.55 },
+      { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.585, yRidge: 0.605, yInner: 0.585 },
+      { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.615, yRidge: 0.64, yInner: 0.615 },
       { z:  1.15, xOuter: sign * 0.79, xRidge: sign * 0.825, xInner: sign * 0.78, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
       { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.775, yOuter: 0.585, yRidge: 0.608, yInner: 0.585 },
       { z:  0.40, xOuter: sign * 0.79, xRidge: sign * 0.82, xInner: sign * 0.78, yOuter: 0.575, yRidge: 0.598, yInner: 0.575 },
@@ -707,13 +707,13 @@ function buildKazeR01(paintColorHex) {
     grilleShape.lineTo(-0.20, -0.10);
     grilleShape.closePath();
     const grille = new THREE.Mesh(new THREE.ShapeGeometry(grilleShape), blackMat);
-    grille.position.set(0, 0.30, 2.155);
+    grille.position.set(0, 0.36, 2.155);
     grille.rotation.y = Math.PI;
     car.add(grille);
     // slim horizontal grille slats
     for (let i = 0; i < 3; i++) {
       const slat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.012, 0.02), carbonMat);
-      slat.position.set(0, 0.24 + i * 0.045, 2.15);
+      slat.position.set(0, 0.30 + i * 0.045, 2.15);
       car.add(slat);
     }
   }
@@ -731,7 +731,7 @@ function buildKazeR01(paintColorHex) {
       new THREE.BoxGeometry(0.42, 0.055, 0.055),
       frontLightMat
     );
-    lamp.position.set(sign * 0.56, 0.40, 1.92);
+    lamp.position.set(sign * 0.56, 0.48, 1.92);
     lamp.rotation.y = sign * 0.19;
     car.add(lamp);
 
@@ -743,7 +743,7 @@ function buildKazeR01(paintColorHex) {
       );
       led.position.set(
         sign * 0.57,
-        0.365 + i * 0.014,
+        0.445 + i * 0.014,
         1.90 - i * 0.012
       );
       led.rotation.y = sign * 0.19;
@@ -755,18 +755,19 @@ function buildKazeR01(paintColorHex) {
   // 9. Rear body / diffuser / tail
   // --------------------------------------------------------
   // Keep all rear lighting physically attached to the rear body.
-  // The lamp sits just above the bumper surface instead of floating
-  // behind the car.
+  // Repositioned to match the current (lower/flatter) tail height -
+  // the lamp's Y had been left over from an earlier, taller tail
+  // shape and had drifted well above the actual body surface there.
   addBox(
     1.62, 0.16, 0.09,
     blackMat,
-    0, 0.38, -2.24
+    0, 0.40, -2.24
   );
 
   addBox(
     1.18, 0.038, 0.030,
     rearLightMat,
-    0, 0.575, -2.292
+    0, 0.435, -2.292
   );
 
   // Rear diffuser

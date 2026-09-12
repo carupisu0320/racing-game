@@ -573,8 +573,8 @@ scene.add(trees);
 // 道路(舗装路面+センターの破線+左右の白線)
 // 街・郊外・山道の3エリアを通る、スプライン曲線でつながったループ状の道路
 // ==========================================================
-const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.9 });
-const roadLineMat = new THREE.MeshBasicMaterial({ color: 0xf0f0e0 });
+const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.9, side: THREE.DoubleSide });
+const roadLineMat = new THREE.MeshBasicMaterial({ color: 0xf0f0e0, side: THREE.DoubleSide });
 
 // 帯状(道路・白線共通)のジオメトリを、曲線上の点列から作る。
 // 各点で進行方向の接線を計算して垂直方向にオフセットすることで、
@@ -1355,7 +1355,7 @@ if (MOUNTAIN_MODE) {
   // 白線と全く同じ mountainOffsetPoints() で位置を計算し、buildOpenRibbon で
   // 地形に沿った連続したリボンとして手すり本体を作る。ポツポツと独立した箱を
   // 個別に回転させて置くのではないため、ヘアピンでも道からズレたり途切れたりしない。
-  const guardrailMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d0, metalness: 0.3, roughness: 0.5 });
+  const guardrailMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d0, metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide });
   const guardrailPostMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
   {
     const railInset = mountainRoadHalfWidth + 0.5;

@@ -406,7 +406,11 @@ function buildKazeR01(paintColorHex) {
     { z: -0.78, halfWidth: 0.95, bottomY: 0.46, topY: 0.78 },
     { z: -1.12, halfWidth: 1.05, bottomY: 0.43, topY: 0.92 },
     { z: -1.51, halfWidth: 1.10, bottomY: 0.42, topY: 1.05 },
-    { z: -1.84, halfWidth: 0.96, bottomY: 0.44, topY: 0.82 }
+    { z: -1.84, halfWidth: 0.96, bottomY: 0.44, topY: 0.82 },
+    // Extra tapering station so the fender blends into the tail
+    // gradually instead of stopping abruptly - the hard stop right
+    // here was reading as a sudden downward kink in the side profile.
+    { z: -2.02, halfWidth: 0.88, bottomY: groundClearance + 0.06, topY: 0.66 }
   ];
 
   const frontShoulder = buildLoft(
@@ -680,25 +684,15 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 8. Front nose / splitter / headlights
   // --------------------------------------------------------
-  // Splitter widened noticeably beyond the hood/nose width above it -
-  // real wide-aero supercars often have the front splitter/bumper
-  // corners flare out wider than the fender line itself. Small corner
-  // wedges bridge the gap so it doesn't read as a flat blade floating
-  // under a narrower nose.
+  // Splitter kept close to the actual body width at this z (roughly
+  // matching the nose's own halfWidth here) instead of sticking out
+  // far past it - a wide thin panel jutting out past the narrower
+  // nose was exactly what read as a "thin blade" tip.
   addBox(
-    1.30, 0.045, 0.20,
+    1.06, 0.045, 0.20,
     carbonMat,
     0, groundClearance + 0.012, 2.08
   );
-  [-1, 1].forEach(sign => {
-    const corner = new THREE.Mesh(
-      new THREE.BoxGeometry(0.22, 0.05, 0.30),
-      carbonMat
-    );
-    corner.position.set(sign * 0.72, groundClearance + 0.05, 1.95);
-    corner.rotation.y = sign * -0.35;
-    car.add(corner);
-  });
 
   // Central grille opening (hexagonal), between the splitter and the
   // hood tip, so the front reads as having a defined grille/intake

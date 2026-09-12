@@ -4,7 +4,7 @@
 // Coordinate: +Z = front, +Y = up, +/-X = left/right
 //
 // Design goals:
-// - approx. 4.92m x 2.14m x 1.25m
+// - 4.52m x 1.98m x approx. 1.16m
 // - Wheelbase 2.72m
 // - Front track 1.69m / Rear track 1.67m
 // - Low-midship supercar proportions
@@ -107,36 +107,28 @@ function buildKazeR01(paintColorHex) {
     emissiveIntensity: 1.5
   });
 
-  const accentMat = new THREE.MeshStandardMaterial({
-    color: 0xe44b4b,
-    emissive: 0x4a0808,
-    emissiveIntensity: 0.35,
-    metalness: 0.35,
-    roughness: 0.28
-  });
-
   // --------------------------------------------------------
   // Dimensions
   // --------------------------------------------------------
-  const L = 4.92;
-  const W = 2.14;
-  const H = 1.25;
+  const L = 4.52;
+  const W = 1.98;
+  const H = 1.16;
 
   const halfLen = L / 2;
-  const halfTrackFront = 0.895;
-  const halfTrackRear = 0.885;
+  const halfTrackFront = 0.845;
+  const halfTrackRear = 0.835;
 
   // Slightly higher than the previous version so the body
   // does not look like it is scraping the road.
-  const groundClearance = 0.155;
+  const groundClearance = 0.145;
 
   // Drawing X positions from the original specification:
   // front axle = 1.05m from nose, rear axle = 3.77m from nose.
-  const frontAxleZ = 1.37;
-  const rearAxleZ = -1.47;
+  const frontAxleZ = halfLen - 1.05; // +1.21
+  const rearAxleZ = halfLen - 3.77;  // -1.51
 
-  const frontWheelRadius = 0.370;
-  const rearWheelRadius = 0.382;
+  const frontWheelRadius = 0.334;
+  const rearWheelRadius = 0.346;
 
   // --------------------------------------------------------
   // Helpers
@@ -300,25 +292,27 @@ function buildKazeR01(paintColorHex) {
   // Wider at both axles, narrower through the door/sill,
   // but without abrupt width changes.
   const bodyStations = [
-    { z:  2.46, halfWidth: 0.06, bottomY: groundClearance, topY: 0.30 },
-    { z:  2.30, halfWidth: 0.34, bottomY: groundClearance, topY: 0.34 },
-    { z:  2.02, halfWidth: 0.61, bottomY: groundClearance, topY: 0.40 },
-    { z:  1.70, halfWidth: 0.78, bottomY: groundClearance, topY: 0.49 },
-    { z:  1.48, halfWidth: 0.86, bottomY: groundClearance, topY: 0.61 },
-    { z:  1.37, halfWidth: 0.94, bottomY: groundClearance, topY: 0.72 },
-    { z:  1.10, halfWidth: 0.84, bottomY: groundClearance, topY: 0.66 },
-    { z:  0.70, halfWidth: 0.82, bottomY: groundClearance, topY: 0.62 },
-    { z:  0.30, halfWidth: 0.84, bottomY: groundClearance, topY: 0.60 },
-    { z: -0.10, halfWidth: 0.85, bottomY: groundClearance, topY: 0.60 },
-    { z: -0.48, halfWidth: 0.87, bottomY: groundClearance, topY: 0.63 },
-    { z: -0.82, halfWidth: 0.94, bottomY: groundClearance, topY: 0.70 },
-    { z: -1.12, halfWidth: 1.00, bottomY: groundClearance, topY: 0.79 },
-    { z: -1.47, halfWidth: 1.06, bottomY: groundClearance, topY: 0.84 },
-    { z: -1.76, halfWidth: 0.93, bottomY: groundClearance, topY: 0.70 },
-    { z: -2.05, halfWidth: 0.77, bottomY: groundClearance, topY: 0.59 },
-    { z: -2.28, halfWidth: 0.58, bottomY: groundClearance, topY: 0.52 },
-    { z: -2.46, halfWidth: 0.40, bottomY: groundClearance, topY: 0.45 }
+    { z:  2.26, halfWidth: 0.22, bottomY: groundClearance, topY: 0.34 },
+    { z:  2.10, halfWidth: 0.42, bottomY: groundClearance, topY: 0.37 },
+    { z:  1.90, halfWidth: 0.62, bottomY: groundClearance, topY: 0.41 },
+    { z:  1.62, halfWidth: 0.78, bottomY: groundClearance, topY: 0.46 },
+    { z:  1.45, halfWidth: 0.86, bottomY: groundClearance, topY: 0.55 },
+    { z:  1.21, halfWidth: 0.95, bottomY: groundClearance, topY: 0.72 },
+    { z:  0.96, halfWidth: 0.91, bottomY: groundClearance, topY: 0.64 },
+    { z:  0.70, halfWidth: 0.89, bottomY: groundClearance, topY: 0.59 },
+    { z:  0.35, halfWidth: 0.90, bottomY: groundClearance, topY: 0.57 },
+    { z:  0.00, halfWidth: 0.91, bottomY: groundClearance, topY: 0.56 },
+    { z: -0.36, halfWidth: 0.90, bottomY: groundClearance, topY: 0.58 },
+    { z: -0.62, halfWidth: 0.91, bottomY: groundClearance, topY: 0.64 },
+    { z: -0.92, halfWidth: 0.94, bottomY: groundClearance, topY: 0.69 },
+    { z: -1.21, halfWidth: 0.97, bottomY: groundClearance, topY: 0.77 },
+    { z: -1.51, halfWidth: 0.97, bottomY: groundClearance, topY: 0.82 },
+    { z: -1.80, halfWidth: 0.86, bottomY: groundClearance, topY: 0.67 },
+    { z: -2.03, halfWidth: 0.65, bottomY: groundClearance, topY: 0.55 },
+    { z: -2.20, halfWidth: 0.45, bottomY: groundClearance, topY: 0.48 },
+    { z: -2.26, halfWidth: 0.38, bottomY: groundClearance, topY: 0.45 }
   ];
+
   const body = buildLoft(bodyStations, bodyCrossSection, paintMat);
   car.add(body);
 
@@ -344,15 +338,17 @@ function buildKazeR01(paintColorHex) {
   ];
 
   const shoulderStations = [
-    { z:  1.64, halfWidth: 0.79, bottomY: 0.50, topY: 0.64 },
-    { z:  1.48, halfWidth: 0.84, bottomY: 0.51, topY: 0.76 },
-    { z:  1.37, halfWidth: 0.91, bottomY: 0.51, topY: 0.88 },
-    { z:  1.12, halfWidth: 0.82, bottomY: 0.50, topY: 0.69 },
-    { z: -0.78, halfWidth: 0.87, bottomY: 0.50, topY: 0.70 },
-    { z: -1.12, halfWidth: 0.96, bottomY: 0.51, topY: 0.82 },
-    { z: -1.47, halfWidth: 1.05, bottomY: 0.51, topY: 0.94 },
-    { z: -1.80, halfWidth: 0.91, bottomY: 0.50, topY: 0.72 }
+    { z:  1.57, halfWidth: 0.73, bottomY: 0.49, topY: 0.60 },
+    { z:  1.42, halfWidth: 0.82, bottomY: 0.49, topY: 0.72 },
+    { z:  1.21, halfWidth: 0.91, bottomY: 0.48, topY: 0.86 },
+    { z:  1.00, halfWidth: 0.85, bottomY: 0.47, topY: 0.67 },
+
+    { z: -0.78, halfWidth: 0.84, bottomY: 0.49, topY: 0.67 },
+    { z: -1.12, halfWidth: 0.91, bottomY: 0.48, topY: 0.78 },
+    { z: -1.51, halfWidth: 0.93, bottomY: 0.48, topY: 0.91 },
+    { z: -1.84, halfWidth: 0.82, bottomY: 0.48, topY: 0.69 }
   ];
+
   const shoulder = buildLoft(
     shoulderStations,
     shoulderCrossSection,
@@ -363,41 +359,25 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 3. Strong SINGLE character line
   // --------------------------------------------------------
-  // This is intentionally a shallow raised surface, not a black
-  // decorative stripe. It starts high on the front fender,
-  // passes through the door, and rises again into the rear fender.
-  //
-  // Both sides use the same path, so the car reads as one design
-  // instead of several unrelated panels.
-  //
-  // z: front -> rear
-  // x: outside side of the body
-  // y: body surface height
   function addCharacterLine(sign) {
     const stations = [
-      { z:  1.60, xOuter: sign * 0.79, xRidge: sign * 0.825, xInner: sign * 0.79, yOuter: 0.60, yRidge: 0.625, yInner: 0.60 },
-      { z:  1.38, xOuter: sign * 0.86, xRidge: sign * 0.90, xInner: sign * 0.86, yOuter: 0.67, yRidge: 0.70, yInner: 0.67 },
-      { z:  1.10, xOuter: sign * 0.82, xRidge: sign * 0.855, xInner: sign * 0.82, yOuter: 0.61, yRidge: 0.635, yInner: 0.61 },
-      { z:  0.72, xOuter: sign * 0.81, xRidge: sign * 0.845, xInner: sign * 0.81, yOuter: 0.575, yRidge: 0.60, yInner: 0.575 },
-      { z:  0.34, xOuter: sign * 0.82, xRidge: sign * 0.855, xInner: sign * 0.82, yOuter: 0.57, yRidge: 0.595, yInner: 0.57 },
-      { z: -0.05, xOuter: sign * 0.83, xRidge: sign * 0.865, xInner: sign * 0.83, yOuter: 0.575, yRidge: 0.60, yInner: 0.575 },
-      { z: -0.43, xOuter: sign * 0.84, xRidge: sign * 0.88, xInner: sign * 0.84, yOuter: 0.59, yRidge: 0.62, yInner: 0.59 },
-      { z: -0.80, xOuter: sign * 0.88, xRidge: sign * 0.925, xInner: sign * 0.88, yOuter: 0.64, yRidge: 0.675, yInner: 0.64 },
-      { z: -1.12, xOuter: sign * 0.94, xRidge: sign * 0.985, xInner: sign * 0.94, yOuter: 0.70, yRidge: 0.735, yInner: 0.70 },
-      { z: -1.45, xOuter: sign * 0.97, xRidge: sign * 1.02, xInner: sign * 0.97, yOuter: 0.77, yRidge: 0.81, yInner: 0.77 },
-      { z: -1.72, xOuter: sign * 0.88, xRidge: sign * 0.92, xInner: sign * 0.88, yOuter: 0.68, yRidge: 0.71, yInner: 0.68 }
+      { z:  1.54, xOuter: sign * 0.735, xRidge: sign * 0.765, xInner: sign * 0.735, yOuter: 0.57, yRidge: 0.592, yInner: 0.57 },
+      { z:  1.34, xOuter: sign * 0.805, xRidge: sign * 0.840, xInner: sign * 0.805, yOuter: 0.62, yRidge: 0.645, yInner: 0.62 },
+      { z:  1.08, xOuter: sign * 0.790, xRidge: sign * 0.825, xInner: sign * 0.790, yOuter: 0.585, yRidge: 0.61, yInner: 0.585 },
+      { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.785, yOuter: 0.56, yRidge: 0.585, yInner: 0.56 },
+      { z:  0.42, xOuter: sign * 0.800, xRidge: sign * 0.825, xInner: sign * 0.800, yOuter: 0.545, yRidge: 0.568, yInner: 0.545 },
+      { z:  0.05, xOuter: sign * 0.805, xRidge: sign * 0.830, xInner: sign * 0.805, yOuter: 0.54, yRidge: 0.562, yInner: 0.54 },
+      { z: -0.34, xOuter: sign * 0.810, xRidge: sign * 0.838, xInner: sign * 0.810, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
+      { z: -0.65, xOuter: sign * 0.820, xRidge: sign * 0.850, xInner: sign * 0.820, yOuter: 0.59, yRidge: 0.615, yInner: 0.59 },
+      { z: -0.94, xOuter: sign * 0.825, xRidge: sign * 0.860, xInner: sign * 0.825, yOuter: 0.625, yRidge: 0.655, yInner: 0.625 },
+      { z: -1.20, xOuter: sign * 0.835, xRidge: sign * 0.875, xInner: sign * 0.835, yOuter: 0.67, yRidge: 0.70, yInner: 0.67 },
+      { z: -1.48, xOuter: sign * 0.850, xRidge: sign * 0.890, xInner: sign * 0.850, yOuter: 0.73, yRidge: 0.765, yInner: 0.73 },
+      { z: -1.72, xOuter: sign * 0.800, xRidge: sign * 0.835, xInner: sign * 0.800, yOuter: 0.65, yRidge: 0.675, yInner: 0.65 }
     ];
-    car.add(buildSurfaceStrip(stations, paintMat));
 
-    // Signature accent: one thin red line following the same body crease.
-    const pts = stations.map(s => new THREE.Vector3(s.xRidge, s.yRidge + 0.008, s.z));
-    const curve = new THREE.CatmullRomCurve3(pts);
-    const accent = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 48, 0.012, 6, false),
-      accentMat
-    );
-    accent.castShadow = false;
-    car.add(accent);
+    const line = buildSurfaceStrip(stations, paintMat);
+    line.renderOrder = 2;
+    car.add(line);
   }
 
   addCharacterLine(-1);
@@ -423,15 +403,15 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // Recessed dark opening behind the door.
   [-1, 1].forEach(sign => {
-    const intakeShape = new THREE.Shape();
-    intakeShape.moveTo(-0.25, -0.11);
-    intakeShape.lineTo(0.23, -0.08);
-    intakeShape.lineTo(0.30, 0.09);
-    intakeShape.lineTo(-0.16, 0.13);
-    intakeShape.lineTo(-0.25, -0.11);
-
     const intake = new THREE.Mesh(
-      new THREE.ShapeGeometry(intakeShape),
+      new THREE.ShapeGeometry(
+        new THREE.Shape()
+          .moveTo(-0.25, -0.11)
+          .lineTo(0.23, -0.08)
+          .lineTo(0.30, 0.09)
+          .lineTo(-0.16, 0.13)
+          .lineTo(-0.25, -0.11)
+      ),
       blackMat
     );
 
@@ -439,9 +419,9 @@ function buildKazeR01(paintColorHex) {
     intake.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
     intake.rotation.z = 0.08;
     intake.position.set(
-      sign * 0.86,
-      0.40,
-      -0.67
+      sign * 0.905,
+      0.39,
+      -0.68
     );
 
     car.add(intake);
@@ -451,7 +431,7 @@ function buildKazeR01(paintColorHex) {
       new THREE.BoxGeometry(0.045, 0.035, 0.46),
       carbonMat
     );
-    lip.position.set(sign * 0.88, 0.55, -0.67);
+    lip.position.set(sign * 0.92, 0.54, -0.68);
     lip.rotation.y = sign * 0.12;
     car.add(lip);
   });
@@ -473,19 +453,23 @@ function buildKazeR01(paintColorHex) {
   ];
 
   const cabinStations = [
-    { z:  0.92, halfWidth: 0.43, bottomY: 0.66, topY: 0.71 },
-    { z:  0.62, halfWidth: 0.53, bottomY: 0.66, topY: 0.94 },
-    { z:  0.28, halfWidth: 0.56, bottomY: 0.72, topY: 1.06 },
-    { z: -0.12, halfWidth: 0.58, bottomY: 0.90, topY: 1.10 },
-    { z: -0.50, halfWidth: 0.54, bottomY: 0.86, topY: 1.05 },
-    { z: -0.84, halfWidth: 0.47, bottomY: 0.74, topY: 0.96 },
-    { z: -1.02, halfWidth: 0.36, bottomY: 0.66, topY: 0.82 }
+    { z:  0.88, halfWidth: 0.49, bottomY: 0.63, topY: 0.69 },
+    { z:  0.55, halfWidth: 0.58, bottomY: 0.64, topY: 0.91 },
+    { z:  0.18, halfWidth: 0.62, bottomY: 0.72, topY: 1.08 },
+    { z: -0.30, halfWidth: 0.62, bottomY: 0.98, topY: 1.12 },
+    { z: -0.66, halfWidth: 0.56, bottomY: 0.90, topY: 1.05 },
+    { z: -0.95, halfWidth: 0.43, bottomY: 0.67, topY: 0.80 }
   ];
+
   const cabin = buildLoft(cabinStations, cabinCrossSection, glassMat);
   car.add(cabin);
 
-  // Roof: the cabin loft itself is the single roof/glass volume.
-  // Do not add a second rectangular roof panel here.
+  // Roof surround
+  addBox(
+    1.02, 0.045, 0.88,
+    blackMat,
+    0, 1.115, -0.20
+  );
 
   // A-pillars, kept thin so the cabin remains visually low.
   [-1, 1].forEach(sign => {
@@ -512,186 +496,95 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 7. Front nose / splitter / headlights
   // --------------------------------------------------------
-  // Low, wide front fascia. The center stays narrow while the corners
-  // flare outward toward the front wheels.
-  const frontFasciaShape = new THREE.Shape();
-  frontFasciaShape.moveTo(-0.78, 0.18);
-  frontFasciaShape.lineTo(-0.54, 0.39);
-  frontFasciaShape.lineTo(-0.18, 0.48);
-  frontFasciaShape.lineTo(0.18, 0.48);
-  frontFasciaShape.lineTo(0.54, 0.39);
-  frontFasciaShape.lineTo(0.78, 0.18);
-  frontFasciaShape.lineTo(0.63, 0.08);
-  frontFasciaShape.lineTo(0.26, 0.04);
-  frontFasciaShape.lineTo(0, 0.075);
-  frontFasciaShape.lineTo(-0.26, 0.04);
-  frontFasciaShape.lineTo(-0.63, 0.08);
-  frontFasciaShape.closePath();
-
-  const frontFascia = new THREE.Mesh(
-    new THREE.ShapeGeometry(frontFasciaShape),
-    paintMat
+  addBox(
+    0.90, 0.04, 0.18,
+    carbonMat,
+    0, groundClearance + 0.01, 2.10
   );
-  frontFascia.position.set(0, 0.10, 2.39);
-  car.add(frontFascia);
 
-  // Central black opening and two smaller side openings.
-  const centerOpeningShape = new THREE.Shape();
-  centerOpeningShape.moveTo(-0.34, 0.13);
-  centerOpeningShape.lineTo(0.34, 0.13);
-  centerOpeningShape.lineTo(0.25, 0.03);
-  centerOpeningShape.lineTo(-0.25, 0.03);
-  centerOpeningShape.closePath();
-
-  const centerOpening = new THREE.Mesh(
-    new THREE.ShapeGeometry(centerOpeningShape),
-    blackMat
+  // Central lower intake
+  addTrapezoidPanel(
+    0.58, 0.60, 0.16, 0.055,
+    blackMat,
+    0, groundClearance + 0.16, 2.05
   );
-  centerOpening.position.set(0, 0.10, 2.405);
-  car.add(centerOpening);
 
   [-1, 1].forEach(sign => {
-    const sideOpeningShape = new THREE.Shape();
-    sideOpeningShape.moveTo(0, 0.10);
-    sideOpeningShape.lineTo(0.23, 0.18);
-    sideOpeningShape.lineTo(0.19, 0.04);
-    sideOpeningShape.lineTo(0.04, 0.02);
-    sideOpeningShape.closePath();
-
-    const sideOpening = new THREE.Mesh(
-      new THREE.ShapeGeometry(sideOpeningShape),
-      blackMat
-    );
-    sideOpening.position.set(sign * 0.58, 0.10, 2.405);
-    sideOpening.scale.x = sign;
-    car.add(sideOpening);
-  });
-
-  // Thin, swept LED headlights.
-  [-1, 1].forEach(sign => {
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0.36);
-    shape.lineTo(0.46, 0.42);
-    shape.lineTo(0.58, 0.34);
-    shape.lineTo(0.19, 0.30);
-    shape.closePath();
-
-    const lamp = new THREE.Mesh(new THREE.ShapeGeometry(shape), frontLightMat);
-    lamp.position.set(sign * 0.05, 0.0, 2.415);
-    lamp.scale.x = sign;
-    car.add(lamp);
-
-    const led = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.014, 0.022),
+    // Thin headlight housing
+    const lamp = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.055, 0.055),
       frontLightMat
     );
-    led.position.set(sign * 0.46, 0.365, 2.40);
-    led.rotation.y = sign * 0.18;
-    car.add(led);
-  });
+    lamp.position.set(sign * 0.56, 0.40, 1.92);
+    lamp.rotation.y = sign * 0.19;
+    car.add(lamp);
 
-  // Low front splitter.
-  addBox(1.62, 0.045, 0.16, carbonMat, 0, groundClearance + 0.015, 2.42);
-
-  // --------------------------------------------------------
-  // 8. Proper wheel arches
-  // --------------------------------------------------------
-  // The tire is NOT buried inside a solid body anymore.
-  // The body side is kept slightly narrower and a real curved
-  // painted arch is placed around the upper half of each tire.
-  // This is much closer to a real fender silhouette.
-  function addWheelArch(sign, axleZ, radius, rear = false) {
-    // The old version placed a white tube far outside the tire, which
-    // looked like a floating hoop. Keep the wheel opening tight to the
-    // tire instead. This is only a subtle painted lip.
-    const wheelWidth = rear ? 0.279 : 0.241;
-    const outerX = sign * ((rear ? halfTrackRear : halfTrackFront) + wheelWidth * 0.52 + 0.012);
-    const archRadius = radius + (rear ? 0.018 : 0.016);
-    const points = [];
-    const startA = Math.PI * 0.88;
-    const endA = Math.PI * 0.12;
-    const count = 18;
-
-    for (let i = 0; i <= count; i++) {
-      const a = startA + (endA - startA) * (i / count);
-      points.push(new THREE.Vector3(
-        outerX,
-        radius + Math.sin(a) * archRadius,
-        axleZ + Math.cos(a) * archRadius
-      ));
+    // Three small LED elements
+    for (let i = 0; i < 3; i++) {
+      const led = new THREE.Mesh(
+        new THREE.BoxGeometry(0.27, 0.008, 0.025),
+        frontLightMat
+      );
+      led.position.set(
+        sign * 0.57,
+        0.365 + i * 0.014,
+        1.90 - i * 0.012
+      );
+      led.rotation.y = sign * 0.19;
+      car.add(led);
     }
-
-    const curve = new THREE.CatmullRomCurve3(points);
-    const lip = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 28, 0.018, 6, false),
-      paintDarkMat
-    );
-    lip.castShadow = true;
-    lip.receiveShadow = true;
-    car.add(lip);
-  }
-
-  [-1, 1].forEach(sign => {
-    addWheelArch(sign, frontAxleZ, frontWheelRadius, false);
-    addWheelArch(sign, rearAxleZ, rearWheelRadius, true);
   });
 
   // --------------------------------------------------------
   // 9. Rear body / diffuser / tail
   // --------------------------------------------------------
-  // Wide black rear fascia, thin full-width lamp and a deep diffuser.
-  addBox(1.58, 0.22, 0.08, blackMat, 0, 0.42, -2.40);
+  addBox(
+    1.02, 0.22, 0.10,
+    carbonMat,
+    0, groundClearance + 0.18, -2.20
+  );
 
-  addBox(1.38, 0.045, 0.045, rearLightMat, 0, 0.60, -2.445);
+  addBox(
+    0.82, 0.055, 0.055,
+    rearLightMat,
+    0, groundClearance + 0.48, -2.235
+  );
 
-  // Outer rear vents
-  [-1, 1].forEach(sign => {
-    addBox(0.30, 0.24, 0.055, blackMat, sign * 0.72, 0.34, -2.43);
-  });
+  // Rear diffuser with five fins
+  addTrapezoidPanel(
+    0.72, 0.96, 0.18, 0.28,
+    carbonMat,
+    0, groundClearance + 0.09, -2.17
+  );
 
-  // Four large diffuser fins
-  addBox(1.48, 0.20, 0.34, carbonMat, 0, 0.12, -2.30);
-  for (let i = -3; i <= 3; i++) {
-    addBox(0.024, 0.20, 0.34, blackMat, i * 0.20, 0.11, -2.30);
+  for (let i = -2; i <= 2; i++) {
+    addBox(
+      0.018, 0.10, 0.26,
+      blackMat,
+      i * 0.14,
+      groundClearance + 0.07,
+      -2.17
+    );
   }
-
-  // Twin round exhaust outlets
-  [-1, 1].forEach(sign => {
-    const tip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.105, 0.105, 0.065, 20),
-      rimMat
-    );
-    tip.rotation.x = Math.PI / 2;
-    tip.position.set(sign * 0.62, 0.33, -2.45);
-    car.add(tip);
-
-    const inner = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.070, 0.070, 0.068, 20),
-      blackMat
-    );
-    inner.rotation.x = Math.PI / 2;
-    inner.position.set(sign * 0.62, 0.33, -2.452);
-    car.add(inner);
-  });
 
   // --------------------------------------------------------
   // 10. Rear wing
   // --------------------------------------------------------
-  const wingZ = -2.18;
-  const wingY = 1.00;
+  const wingZ = -1.96;
+  const wingY = 0.98;
 
   [-1, 1].forEach(sign => {
     const strut = new THREE.Mesh(
-      new THREE.BoxGeometry(0.055, 0.36, 0.075),
+      new THREE.BoxGeometry(0.055, 0.35, 0.075),
       carbonMat
     );
-    strut.position.set(sign * 0.52, 0.79, wingZ);
+    strut.position.set(sign * 0.44, 0.82, wingZ);
     strut.rotation.x = -0.16;
     car.add(strut);
   });
 
   const wing = new THREE.Mesh(
-    new THREE.BoxGeometry(1.72, 0.045, 0.22),
+    new THREE.BoxGeometry(1.48, 0.045, 0.24),
     carbonMat
   );
   wing.position.set(0, wingY, wingZ);
@@ -701,10 +594,10 @@ function buildKazeR01(paintColorHex) {
 
   [-1, 1].forEach(sign => {
     const plate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.035, 0.19, 0.27),
+      new THREE.BoxGeometry(0.035, 0.19, 0.29),
       carbonMat
     );
-    plate.position.set(sign * 0.84, wingY, wingZ);
+    plate.position.set(sign * 0.73, wingY, wingZ);
     car.add(plate);
   });
 
@@ -716,7 +609,7 @@ function buildKazeR01(paintColorHex) {
       new THREE.BoxGeometry(0.065, 0.035, 0.08),
       blackMat
     );
-    stalk.position.set(sign * 0.74, 0.81, 0.56);
+    stalk.position.set(sign * 0.70, 0.78, 0.55);
     stalk.rotation.y = sign * 0.18;
     car.add(stalk);
 
@@ -725,7 +618,7 @@ function buildKazeR01(paintColorHex) {
       blackMat
     );
     mirror.scale.set(0.09, 0.055, 0.16);
-    mirror.position.set(sign * 0.90, 0.80, 0.53);
+    mirror.position.set(sign * 0.80, 0.77, 0.52);
     car.add(mirror);
   });
 
@@ -861,8 +754,8 @@ function buildKazeR01(paintColorHex) {
   });
 
   const floorHeight = groundClearance + 0.145;
-  const cabinFrontZ = 0.56;
-  const bPillarZ = -0.62;
+  const cabinFrontZ = 0.50;
+  const bPillarZ = -0.60;
 
   const dashboard = new THREE.Mesh(
     new THREE.BoxGeometry(1.18, 0.17, 0.22),
@@ -1169,10 +1062,10 @@ function buildKazeR01(paintColorHex) {
     updateSideMirrorCameras,
 
     halfTrack: (halfTrackFront + halfTrackRear) / 2,
-    halfWheelbase: 1.42,
+    halfWheelbase: 1.36,
     wheelRadius: (frontWheelRadius + rearWheelRadius) / 2,
 
-    collisionRadius: 2.10
+    collisionRadius: 1.90
   };
 }
 

@@ -297,16 +297,16 @@ function buildKazeR01(paintColorHex) {
   // has real volume and does not look like a thin slab with the tires
   // sticking out the sides.
   const bodyStations = [
-    { z:  2.26, halfWidth: 0.22, bottomY: groundClearance, topY: 0.34 },
-    { z:  2.18, halfWidth: 0.32, bottomY: groundClearance, topY: 0.355 },
-    { z:  2.10, halfWidth: 0.42, bottomY: groundClearance, topY: 0.37 },
-    { z:  2.00, halfWidth: 0.52, bottomY: groundClearance, topY: 0.39 },
-    { z:  1.90, halfWidth: 0.62, bottomY: groundClearance, topY: 0.41 },
-    { z:  1.76, halfWidth: 0.70, bottomY: groundClearance, topY: 0.435 },
-    { z:  1.62, halfWidth: 0.78, bottomY: groundClearance, topY: 0.46 },
-    { z:  1.535, halfWidth: 0.82, bottomY: groundClearance, topY: 0.505 },
-    { z:  1.45, halfWidth: 0.86, bottomY: groundClearance, topY: 0.55 },
-    { z:  1.33, halfWidth: 0.905, bottomY: groundClearance, topY: 0.635 },
+    { z:  2.26, halfWidth: 0.22, bottomY: groundClearance, topY: 0.40 },
+    { z:  2.18, halfWidth: 0.32, bottomY: groundClearance, topY: 0.42 },
+    { z:  2.10, halfWidth: 0.42, bottomY: groundClearance, topY: 0.435 },
+    { z:  2.00, halfWidth: 0.52, bottomY: groundClearance, topY: 0.45 },
+    { z:  1.90, halfWidth: 0.62, bottomY: groundClearance, topY: 0.465 },
+    { z:  1.76, halfWidth: 0.70, bottomY: groundClearance, topY: 0.485 },
+    { z:  1.62, halfWidth: 0.78, bottomY: groundClearance, topY: 0.51 },
+    { z:  1.535, halfWidth: 0.82, bottomY: groundClearance, topY: 0.545 },
+    { z:  1.45, halfWidth: 0.86, bottomY: groundClearance, topY: 0.58 },
+    { z:  1.33, halfWidth: 0.905, bottomY: groundClearance, topY: 0.65 },
     { z:  1.21, halfWidth: 0.95, bottomY: groundClearance, topY: 0.72 },
     { z:  0.96, halfWidth: 0.91, bottomY: groundClearance, topY: 0.70 },
     { z:  0.70, halfWidth: 0.89, bottomY: groundClearance, topY: 0.64 },
@@ -318,9 +318,14 @@ function buildKazeR01(paintColorHex) {
     { z: -1.21, halfWidth: 0.97, bottomY: groundClearance, topY: 0.83 },
     { z: -1.51, halfWidth: 0.97, bottomY: groundClearance, topY: 0.88 },
     { z: -1.80, halfWidth: 0.86, bottomY: groundClearance, topY: 0.72 },
-    { z: -2.03, halfWidth: 0.65, bottomY: groundClearance, topY: 0.55 },
-    { z: -2.20, halfWidth: 0.45, bottomY: groundClearance, topY: 0.48 },
-    { z: -2.26, halfWidth: 0.38, bottomY: groundClearance, topY: 0.45 }
+    // Tail kept wide almost all the way to the back (Kamm-style cut-off)
+    // instead of tapering to a narrow point, so the rear light bar
+    // (about 0.81 half-width) actually sits ON the body instead of
+    // floating outside it.
+    { z: -2.00, halfWidth: 0.80, bottomY: groundClearance, topY: 0.62 },
+    { z: -2.15, halfWidth: 0.78, bottomY: groundClearance, topY: 0.54 },
+    { z: -2.24, halfWidth: 0.76, bottomY: groundClearance, topY: 0.47 },
+    { z: -2.29, halfWidth: 0.72, bottomY: groundClearance, topY: 0.44 }
   ];
 
   const body = buildLoft(bodyStations, bodyCrossSection, paintMat);
@@ -347,24 +352,40 @@ function buildKazeR01(paintColorHex) {
     [-0.45, 0.02]
   ];
 
-  const shoulderStations = [
+  // Split into a FRONT fender loft and a REAR fender loft (two separate
+  // meshes). Previously this was a single stations array; buildLoft just
+  // connects consecutive array entries regardless of the z-gap between
+  // them, so the front (z 1.57..1.00) and rear (z -0.78..-1.84) halves
+  // were being bridged by an unwanted long diagonal panel spanning the
+  // whole door area, floating well above the real body surface there -
+  // this is what read as the body looking "doubled".
+  const frontShoulderStations = [
     { z:  1.57, halfWidth: 0.75, bottomY: 0.49, topY: 0.68 },
     { z:  1.42, halfWidth: 0.85, bottomY: 0.49, topY: 0.82 },
     { z:  1.21, halfWidth: 0.94, bottomY: 0.48, topY: 0.98 },
-    { z:  1.00, halfWidth: 0.87, bottomY: 0.47, topY: 0.76 },
+    { z:  1.00, halfWidth: 0.87, bottomY: 0.47, topY: 0.76 }
+  ];
 
+  const rearShoulderStations = [
     { z: -0.78, halfWidth: 0.86, bottomY: 0.49, topY: 0.76 },
     { z: -1.12, halfWidth: 0.94, bottomY: 0.48, topY: 0.89 },
     { z: -1.51, halfWidth: 0.97, bottomY: 0.48, topY: 1.03 },
     { z: -1.84, halfWidth: 0.85, bottomY: 0.48, topY: 0.80 }
   ];
 
-  const shoulder = buildLoft(
-    shoulderStations,
+  const frontShoulder = buildLoft(
+    frontShoulderStations,
     shoulderCrossSection,
     paintDarkMat
   );
-  car.add(shoulder);
+  car.add(frontShoulder);
+
+  const rearShoulder = buildLoft(
+    rearShoulderStations,
+    shoulderCrossSection,
+    paintDarkMat
+  );
+  car.add(rearShoulder);
 
   // --------------------------------------------------------
   // 3. Strong SINGLE character line / front-to-rear body crease
@@ -374,10 +395,10 @@ function buildKazeR01(paintColorHex) {
   // through the door, then climbs into the rear fender.
   function addCharacterLine(sign) {
     const stations = [
-      { z:  2.22, xOuter: sign * 0.24, xRidge: sign * 0.28, xInner: sign * 0.22, yOuter: 0.34, yRidge: 0.355, yInner: 0.34 },
-      { z:  1.98, xOuter: sign * 0.46, xRidge: sign * 0.50, xInner: sign * 0.45, yOuter: 0.40, yRidge: 0.418, yInner: 0.40 },
-      { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.47, yRidge: 0.49, yInner: 0.47 },
-      { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.54, yRidge: 0.565, yInner: 0.54 },
+      { z:  2.22, xOuter: sign * 0.24, xRidge: sign * 0.28, xInner: sign * 0.22, yOuter: 0.40, yRidge: 0.415, yInner: 0.40 },
+      { z:  1.98, xOuter: sign * 0.46, xRidge: sign * 0.50, xInner: sign * 0.45, yOuter: 0.46, yRidge: 0.478, yInner: 0.46 },
+      { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.525, yRidge: 0.545, yInner: 0.525 },
+      { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.57, yRidge: 0.595, yInner: 0.57 },
       { z:  1.15, xOuter: sign * 0.79, xRidge: sign * 0.825, xInner: sign * 0.78, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
       { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.775, yOuter: 0.585, yRidge: 0.608, yInner: 0.585 },
       { z:  0.40, xOuter: sign * 0.79, xRidge: sign * 0.82, xInner: sign * 0.78, yOuter: 0.575, yRidge: 0.598, yInner: 0.575 },

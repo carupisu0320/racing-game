@@ -1383,6 +1383,22 @@ if (MOUNTAIN_MODE) {
     }
   }
 
+  // 道路(ヘアピンで大きくx方向に振れる)との実際の距離を調べる関数。
+  // 単純に「xの絶対値」で避けていた前のやり方だと、ヘアピンで道がx方向に
+  // 大きく振れた場所には木や岩がそのまま道の上に置かれてしまっていたため、
+  // 道路の点列との最短距離をきちんと計算する方式に変更している。
+  function distanceToMountainRoad(x, z) {
+    let best = Infinity;
+    for (let i = 0; i < mountainRoadPoints.length; i += 2) {
+      const p = mountainRoadPoints[i];
+      const dx = x - p.x, dz = z - p.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < best) best = d2;
+    }
+    return Math.sqrt(best);
+  }
+  const mountainRoadClearRadius = MOUNTAIN_ROAD_HALF_WIDTH + 9; // ガードレールより外側まで確保
+
   // 針葉樹林(標高が低いエリアに茂る松のような木)。道からは十分離して配置する。
   const pineFoliageMat = new THREE.MeshStandardMaterial({ color: 0x2f5233, roughness: 0.9 });
   const pineTrunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3524 });
@@ -1405,11 +1421,11 @@ if (MOUNTAIN_MODE) {
     scene.add(tree);
   }
   let pinesPlaced = 0, pineAttempts = 0;
-  while (pinesPlaced < 150 && pineAttempts < 3000) {
+  while (pinesPlaced < 150 && pineAttempts < 4000) {
     pineAttempts++;
     const x = (Math.random() - 0.5) * 480;
     const z = -20 + Math.random() * -580;
-    if (Math.abs(x) < 22) continue; // 道の上を避ける
+    if (distanceToMountainRoad(x, z) < mountainRoadClearRadius) continue; // 道の上・道の際を避ける
     const h = terrainHeight(x, z);
     if (h > MOUNTAIN_ROCK_LINE) continue; // 森林限界より上には生えない
     buildPine(x, z);
@@ -1425,11 +1441,11 @@ if (MOUNTAIN_MODE) {
   mountainRockMesh.receiveShadow = true;
   const mrDummy = new THREE.Object3D();
   let mRocksPlaced = 0, mRockAttempts = 0;
-  while (mRocksPlaced < mountainRockCount && mRockAttempts < mountainRockCount * 25) {
+  while (mRocksPlaced < mountainRockCount && mRockAttempts < mountainRockCount * 30) {
     mRockAttempts++;
     const x = (Math.random() - 0.5) * 500;
     const z = -10 + Math.random() * -650;
-    if (Math.abs(x) < 20) continue;
+    if (distanceToMountainRoad(x, z) < mountainRoadClearRadius) continue; // 道の上・道の際を避ける
     const h = terrainHeight(x, z);
     if (h < MOUNTAIN_ROCK_LINE * 0.6) continue; // 岩肌〜山頂エリアのみ
     const size = 0.7 + Math.random() * 1.6;
@@ -1618,8 +1634,19 @@ function loadCarModel(key, paintColorHex) {
   if (prevPos) {
     car.position.copy(prevPos);
     car.rotation.y = prevRotY;
+  } else if (MOUNTAIN_MODE && mountainRoadPoints) {
+    // 峠道の始点(0,0)はそのままだと道路の向き(接線方向)と車の初期向きがズレて、
+    // タイヤの一部が舗装面の外に出てしまい「地面に埋まる」ように見えることがあるため、
+    // 道路の点列そのものから、始点より少しだけ道なりに進んだ位置と向きを使ってスポーンさせる。
+    const spawnIdx = 6;
+    const sp = mountainRoadPoints[spawnIdx];
+    const prevP = mountainRoadPoints[Math.max(0, spawnIdx - 1)];
+    const nextP = mountainRoadPoints[Math.min(mountainRoadPoints.length - 1, spawnIdx + 1)];
+    const tangent = new THREE.Vector3().subVectors(nextP, prevP).normalize();
+    car.position.set(sp.x, 0, sp.z);
+    car.rotation.y = Math.atan2(tangent.x, tangent.z);
   } else {
-    car.position.set((ROUTE66_MODE || MOUNTAIN_MODE) ? 0 : 45, 0, (ROUTE66_MODE || MOUNTAIN_MODE) ? 0 : 125); // 道路上からスタート
+    car.position.set(ROUTE66_MODE ? 0 : 45, 0, ROUTE66_MODE ? 0 : 125); // 道路上からスタート
   }
   scene.add(car);
 

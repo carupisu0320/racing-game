@@ -291,23 +291,33 @@ function buildKazeR01(paintColorHex) {
 
   // Wider at both axles, narrower through the door/sill,
   // but without abrupt width changes.
+  // The nose (z 2.26 -> 1.21) uses extra intermediate stations so the
+  // taper reads as a smooth curve instead of a faceted, blocky wedge.
+  // Mid-body topY values were also raised slightly overall so the body
+  // has real volume and does not look like a thin slab with the tires
+  // sticking out the sides.
   const bodyStations = [
     { z:  2.26, halfWidth: 0.22, bottomY: groundClearance, topY: 0.34 },
+    { z:  2.18, halfWidth: 0.32, bottomY: groundClearance, topY: 0.355 },
     { z:  2.10, halfWidth: 0.42, bottomY: groundClearance, topY: 0.37 },
+    { z:  2.00, halfWidth: 0.52, bottomY: groundClearance, topY: 0.39 },
     { z:  1.90, halfWidth: 0.62, bottomY: groundClearance, topY: 0.41 },
+    { z:  1.76, halfWidth: 0.70, bottomY: groundClearance, topY: 0.435 },
     { z:  1.62, halfWidth: 0.78, bottomY: groundClearance, topY: 0.46 },
+    { z:  1.535, halfWidth: 0.82, bottomY: groundClearance, topY: 0.505 },
     { z:  1.45, halfWidth: 0.86, bottomY: groundClearance, topY: 0.55 },
+    { z:  1.33, halfWidth: 0.905, bottomY: groundClearance, topY: 0.635 },
     { z:  1.21, halfWidth: 0.95, bottomY: groundClearance, topY: 0.72 },
-    { z:  0.96, halfWidth: 0.91, bottomY: groundClearance, topY: 0.64 },
-    { z:  0.70, halfWidth: 0.89, bottomY: groundClearance, topY: 0.59 },
-    { z:  0.35, halfWidth: 0.90, bottomY: groundClearance, topY: 0.57 },
-    { z:  0.00, halfWidth: 0.91, bottomY: groundClearance, topY: 0.56 },
-    { z: -0.36, halfWidth: 0.90, bottomY: groundClearance, topY: 0.58 },
-    { z: -0.62, halfWidth: 0.91, bottomY: groundClearance, topY: 0.64 },
-    { z: -0.92, halfWidth: 0.94, bottomY: groundClearance, topY: 0.69 },
-    { z: -1.21, halfWidth: 0.97, bottomY: groundClearance, topY: 0.77 },
-    { z: -1.51, halfWidth: 0.97, bottomY: groundClearance, topY: 0.82 },
-    { z: -1.80, halfWidth: 0.86, bottomY: groundClearance, topY: 0.67 },
+    { z:  0.96, halfWidth: 0.91, bottomY: groundClearance, topY: 0.70 },
+    { z:  0.70, halfWidth: 0.89, bottomY: groundClearance, topY: 0.64 },
+    { z:  0.35, halfWidth: 0.90, bottomY: groundClearance, topY: 0.62 },
+    { z:  0.00, halfWidth: 0.91, bottomY: groundClearance, topY: 0.61 },
+    { z: -0.36, halfWidth: 0.90, bottomY: groundClearance, topY: 0.63 },
+    { z: -0.62, halfWidth: 0.91, bottomY: groundClearance, topY: 0.69 },
+    { z: -0.92, halfWidth: 0.94, bottomY: groundClearance, topY: 0.74 },
+    { z: -1.21, halfWidth: 0.97, bottomY: groundClearance, topY: 0.83 },
+    { z: -1.51, halfWidth: 0.97, bottomY: groundClearance, topY: 0.88 },
+    { z: -1.80, halfWidth: 0.86, bottomY: groundClearance, topY: 0.72 },
     { z: -2.03, halfWidth: 0.65, bottomY: groundClearance, topY: 0.55 },
     { z: -2.20, halfWidth: 0.45, bottomY: groundClearance, topY: 0.48 },
     { z: -2.26, halfWidth: 0.38, bottomY: groundClearance, topY: 0.45 }
@@ -338,15 +348,15 @@ function buildKazeR01(paintColorHex) {
   ];
 
   const shoulderStations = [
-    { z:  1.57, halfWidth: 0.73, bottomY: 0.49, topY: 0.60 },
-    { z:  1.42, halfWidth: 0.82, bottomY: 0.49, topY: 0.72 },
-    { z:  1.21, halfWidth: 0.91, bottomY: 0.48, topY: 0.86 },
-    { z:  1.00, halfWidth: 0.85, bottomY: 0.47, topY: 0.67 },
+    { z:  1.57, halfWidth: 0.75, bottomY: 0.49, topY: 0.68 },
+    { z:  1.42, halfWidth: 0.85, bottomY: 0.49, topY: 0.82 },
+    { z:  1.21, halfWidth: 0.94, bottomY: 0.48, topY: 0.98 },
+    { z:  1.00, halfWidth: 0.87, bottomY: 0.47, topY: 0.76 },
 
-    { z: -0.78, halfWidth: 0.84, bottomY: 0.49, topY: 0.67 },
-    { z: -1.12, halfWidth: 0.91, bottomY: 0.48, topY: 0.78 },
-    { z: -1.51, halfWidth: 0.93, bottomY: 0.48, topY: 0.91 },
-    { z: -1.84, halfWidth: 0.82, bottomY: 0.48, topY: 0.69 }
+    { z: -0.78, halfWidth: 0.86, bottomY: 0.49, topY: 0.76 },
+    { z: -1.12, halfWidth: 0.94, bottomY: 0.48, topY: 0.89 },
+    { z: -1.51, halfWidth: 0.97, bottomY: 0.48, topY: 1.03 },
+    { z: -1.84, halfWidth: 0.85, bottomY: 0.48, topY: 0.80 }
   ];
 
   const shoulder = buildLoft(
@@ -369,15 +379,15 @@ function buildKazeR01(paintColorHex) {
       { z:  1.70, xOuter: sign * 0.66, xRidge: sign * 0.695, xInner: sign * 0.65, yOuter: 0.47, yRidge: 0.49, yInner: 0.47 },
       { z:  1.42, xOuter: sign * 0.77, xRidge: sign * 0.805, xInner: sign * 0.76, yOuter: 0.54, yRidge: 0.565, yInner: 0.54 },
       { z:  1.15, xOuter: sign * 0.79, xRidge: sign * 0.825, xInner: sign * 0.78, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
-      { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.775, yOuter: 0.535, yRidge: 0.558, yInner: 0.535 },
-      { z:  0.40, xOuter: sign * 0.79, xRidge: sign * 0.82, xInner: sign * 0.78, yOuter: 0.525, yRidge: 0.548, yInner: 0.525 },
-      { z:  0.02, xOuter: sign * 0.80, xRidge: sign * 0.832, xInner: sign * 0.79, yOuter: 0.53, yRidge: 0.555, yInner: 0.53 },
-      { z: -0.36, xOuter: sign * 0.815, xRidge: sign * 0.85, xInner: sign * 0.805, yOuter: 0.55, yRidge: 0.575, yInner: 0.55 },
-      { z: -0.72, xOuter: sign * 0.83, xRidge: sign * 0.87, xInner: sign * 0.82, yOuter: 0.585, yRidge: 0.615, yInner: 0.585 },
-      { z: -1.05, xOuter: sign * 0.85, xRidge: sign * 0.89, xInner: sign * 0.84, yOuter: 0.62, yRidge: 0.652, yInner: 0.62 },
-      { z: -1.32, xOuter: sign * 0.87, xRidge: sign * 0.91, xInner: sign * 0.86, yOuter: 0.66, yRidge: 0.695, yInner: 0.66 },
-      { z: -1.51, xOuter: sign * 0.88, xRidge: sign * 0.92, xInner: sign * 0.87, yOuter: 0.69, yRidge: 0.73, yInner: 0.69 },
-      { z: -1.73, xOuter: sign * 0.82, xRidge: sign * 0.855, xInner: sign * 0.81, yOuter: 0.63, yRidge: 0.66, yInner: 0.63 }
+      { z:  0.78, xOuter: sign * 0.785, xRidge: sign * 0.815, xInner: sign * 0.775, yOuter: 0.585, yRidge: 0.608, yInner: 0.585 },
+      { z:  0.40, xOuter: sign * 0.79, xRidge: sign * 0.82, xInner: sign * 0.78, yOuter: 0.575, yRidge: 0.598, yInner: 0.575 },
+      { z:  0.02, xOuter: sign * 0.80, xRidge: sign * 0.832, xInner: sign * 0.79, yOuter: 0.58, yRidge: 0.605, yInner: 0.58 },
+      { z: -0.36, xOuter: sign * 0.815, xRidge: sign * 0.85, xInner: sign * 0.805, yOuter: 0.60, yRidge: 0.625, yInner: 0.60 },
+      { z: -0.72, xOuter: sign * 0.83, xRidge: sign * 0.87, xInner: sign * 0.82, yOuter: 0.635, yRidge: 0.665, yInner: 0.635 },
+      { z: -1.05, xOuter: sign * 0.85, xRidge: sign * 0.89, xInner: sign * 0.84, yOuter: 0.67, yRidge: 0.702, yInner: 0.67 },
+      { z: -1.32, xOuter: sign * 0.87, xRidge: sign * 0.91, xInner: sign * 0.86, yOuter: 0.72, yRidge: 0.755, yInner: 0.72 },
+      { z: -1.51, xOuter: sign * 0.88, xRidge: sign * 0.92, xInner: sign * 0.87, yOuter: 0.75, yRidge: 0.79, yInner: 0.75 },
+      { z: -1.73, xOuter: sign * 0.82, xRidge: sign * 0.855, xInner: sign * 0.81, yOuter: 0.68, yRidge: 0.71, yInner: 0.68 }
     ];
 
     // Shallow body-surface ridge; same paint as body so it reads as a

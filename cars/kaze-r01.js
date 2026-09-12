@@ -351,15 +351,14 @@ function buildKazeR01(paintColorHex) {
     { z: -0.92, halfWidth: 0.94, bottomY: groundClearance, topY: 0.74 },
     { z: -1.21, halfWidth: 0.97, bottomY: groundClearance, topY: 0.83 },
     { z: -1.51, halfWidth: 0.97, bottomY: groundClearance, topY: 0.88 },
-    { z: -1.80, halfWidth: 0.86, bottomY: groundClearance, topY: 0.72 },
+    { z: -1.80, halfWidth: 0.90, bottomY: groundClearance, topY: 0.72 },
     // Tail kept wide almost all the way to the back (Kamm-style cut-off)
-    // instead of tapering to a narrow point, so the rear light bar
-    // (about 0.81 half-width) actually sits ON the body instead of
-    // floating outside it.
-    { z: -2.00, halfWidth: 0.80, bottomY: groundClearance, topY: 0.62 },
-    { z: -2.15, halfWidth: 0.78, bottomY: groundClearance, topY: 0.54 },
-    { z: -2.24, halfWidth: 0.76, bottomY: groundClearance, topY: 0.47 },
-    { z: -2.29, halfWidth: 0.72, bottomY: groundClearance, topY: 0.44 }
+    // instead of gradually narrowing, so the top-view silhouette reads
+    // as a wide flat rear deck rather than tapering to a rounded point.
+    { z: -2.00, halfWidth: 0.89, bottomY: groundClearance, topY: 0.62 },
+    { z: -2.15, halfWidth: 0.87, bottomY: groundClearance, topY: 0.54 },
+    { z: -2.24, halfWidth: 0.84, bottomY: groundClearance, topY: 0.47 },
+    { z: -2.29, halfWidth: 0.80, bottomY: groundClearance, topY: 0.44 }
   ];
 
   const body = buildLoft(bodyStations, bodyCrossSection, paintMat);
@@ -609,11 +608,31 @@ function buildKazeR01(paintColorHex) {
     [-0.56, 0.86],
     [-0.78, 0.63]
   ];
-  const roofStations = cabinStations.slice(1, cabinStations.length - 1).map(s => ({
+  // Interpolate one extra station just inside each end of the middle
+  // span so the transition into the windshield/rear-glass rake is a
+  // gentle blend instead of a single hard step (which is part of why
+  // the roof previously read as a separate "patch" rather than a
+  // continuation of the body surface).
+  function lerpStation(a, b, t) {
+    return {
+      z: a.z + (b.z - a.z) * t,
+      halfWidth: a.halfWidth + (b.halfWidth - a.halfWidth) * t,
+      bottomY: a.bottomY + (b.bottomY - a.bottomY) * t,
+      topY: a.topY + (b.topY - a.topY) * t
+    };
+  }
+  const roofStations = [
+    lerpStation(cabinStations[0], cabinStations[1], 0.55),
+    cabinStations[1],
+    cabinStations[2],
+    cabinStations[3],
+    cabinStations[4],
+    lerpStation(cabinStations[4], cabinStations[5], 0.35)
+  ].map(s => ({
     z: s.z,
-    halfWidth: s.halfWidth * 1.015,
+    halfWidth: s.halfWidth * 1.02,
     bottomY: s.bottomY,
-    topY: s.topY + 0.008
+    topY: s.topY + 0.014
   }));
   const roof = buildLoftOpen(roofStations, roofArc, paintMat);
   car.add(roof);
@@ -635,24 +654,25 @@ function buildKazeR01(paintColorHex) {
     addBox(0.05, 0.02, 0.10, blackMat, sign * 0.955, 0.56, -0.05);
   });
 
-  // A-pillars, kept thin so the cabin remains visually low.
+  // A-pillars, shortened slightly so the top sits at/just under the
+  // solid roof line instead of poking above it.
   [-1, 1].forEach(sign => {
     const pillar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.055, 0.48, 0.07),
+      new THREE.BoxGeometry(0.055, 0.40, 0.07),
       blackMat
     );
-    pillar.position.set(sign * 0.55, 0.87, 0.34);
+    pillar.position.set(sign * 0.55, 0.80, 0.34);
     pillar.rotation.x = -0.38;
     car.add(pillar);
   });
 
-  // Rear buttresses
+  // Rear buttresses, same reasoning: shortened to stay under the roof.
   [-1, 1].forEach(sign => {
     const buttress = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 0.34, 0.10),
+      new THREE.BoxGeometry(0.11, 0.26, 0.10),
       blackMat
     );
-    buttress.position.set(sign * 0.51, 0.86, -0.79);
+    buttress.position.set(sign * 0.51, 0.80, -0.79);
     buttress.rotation.x = 0.28;
     car.add(buttress);
   });
@@ -660,11 +680,25 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 8. Front nose / splitter / headlights
   // --------------------------------------------------------
+  // Splitter widened noticeably beyond the hood/nose width above it -
+  // real wide-aero supercars often have the front splitter/bumper
+  // corners flare out wider than the fender line itself. Small corner
+  // wedges bridge the gap so it doesn't read as a flat blade floating
+  // under a narrower nose.
   addBox(
-    0.90, 0.04, 0.18,
+    1.30, 0.045, 0.20,
     carbonMat,
-    0, groundClearance + 0.01, 2.10
+    0, groundClearance + 0.012, 2.08
   );
+  [-1, 1].forEach(sign => {
+    const corner = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.05, 0.30),
+      carbonMat
+    );
+    corner.position.set(sign * 0.72, groundClearance + 0.05, 1.95);
+    corner.rotation.y = sign * -0.35;
+    car.add(corner);
+  });
 
   // Central grille opening (hexagonal), between the splitter and the
   // hood tip, so the front reads as having a defined grille/intake
@@ -814,22 +848,34 @@ function buildKazeR01(paintColorHex) {
   // --------------------------------------------------------
   // 11. Mirrors
   // --------------------------------------------------------
+  // Smaller and mostly body-color, with only a thin black lens area,
+  // so they read as compact aero mirrors instead of a big black blob.
   [-1, 1].forEach(sign => {
     const stalk = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, 0.035, 0.08),
+      new THREE.BoxGeometry(0.05, 0.028, 0.06),
       blackMat
     );
-    stalk.position.set(sign * 0.70, 0.78, 0.55);
+    stalk.position.set(sign * 0.68, 0.76, 0.55);
     stalk.rotation.y = sign * 0.18;
     car.add(stalk);
 
-    const mirror = new THREE.Mesh(
+    const mirrorBody = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 8, 5),
+      paintMat
+    );
+    mirrorBody.scale.set(0.065, 0.04, 0.12);
+    mirrorBody.position.set(sign * 0.775, 0.755, 0.53);
+    mirrorBody.rotation.y = sign * 0.18;
+    car.add(mirrorBody);
+
+    const lens = new THREE.Mesh(
       new THREE.SphereGeometry(1, 8, 5),
       blackMat
     );
-    mirror.scale.set(0.09, 0.055, 0.16);
-    mirror.position.set(sign * 0.80, 0.77, 0.52);
-    car.add(mirror);
+    lens.scale.set(0.05, 0.032, 0.02);
+    lens.position.set(sign * (0.775 - sign * 0.03), 0.752, 0.485);
+    lens.rotation.y = sign * 0.18;
+    car.add(lens);
   });
 
   // --------------------------------------------------------
@@ -1000,9 +1046,13 @@ function buildKazeR01(paintColorHex) {
   centerBadge.position.z = 0.015;
   steeringWheel.add(centerBadge);
 
+  // Seats and steering wheel are pulled down noticeably from where they
+  // were in the open-cockpit version, so they sit clearly inside the
+  // roof instead of poking through it (headrest top now ~0.94 vs a roof
+  // underside of roughly 1.05-1.12 through this part of the cabin).
   steeringWheel.position.set(
     -0.32,
-    floorHeight + 0.56,
+    floorHeight + 0.48,
     cabinFrontZ - 0.05
   );
   steeringWheel.rotation.x = -0.35;
@@ -1015,7 +1065,7 @@ function buildKazeR01(paintColorHex) {
     );
     paddle.position.set(
       sign * 0.16,
-      floorHeight + 0.54,
+      floorHeight + 0.46,
       cabinFrontZ + 0.03
     );
     interiorGroup.add(paddle);
@@ -1023,18 +1073,18 @@ function buildKazeR01(paintColorHex) {
 
   function createSeat(x) {
     const back = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.48, 0.09),
+      new THREE.BoxGeometry(0.42, 0.36, 0.09),
       seatMat
     );
-    back.position.set(x, floorHeight + 0.46, bPillarZ + 0.35);
+    back.position.set(x, floorHeight + 0.34, bPillarZ + 0.35);
     back.rotation.x = -0.15;
     interiorGroup.add(back);
 
     const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.30, 0.16, 0.10),
+      new THREE.BoxGeometry(0.30, 0.14, 0.10),
       seatMat
     );
-    head.position.set(x, floorHeight + 0.76, bPillarZ + 0.40);
+    head.position.set(x, floorHeight + 0.58, bPillarZ + 0.40);
     head.rotation.x = -0.15;
     interiorGroup.add(head);
 
@@ -1042,7 +1092,7 @@ function buildKazeR01(paintColorHex) {
       new THREE.BoxGeometry(0.42, 0.09, 0.45),
       seatMat
     );
-    base.position.set(x, floorHeight + 0.24, bPillarZ + 0.55);
+    base.position.set(x, floorHeight + 0.20, bPillarZ + 0.55);
     interiorGroup.add(base);
   }
 

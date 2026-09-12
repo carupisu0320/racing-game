@@ -396,17 +396,17 @@ function buildKazeR01(paintColorHex) {
   // (front wheel outer edge ~0.965, rear ~0.975) instead of stopping
   // just short of it, which is what read as a gap between tire and body.
   const frontShoulderStations = [
-    { z:  1.57, halfWidth: 0.80, bottomY: 0.46, topY: 0.66 },
-    { z:  1.42, halfWidth: 0.95, bottomY: 0.44, topY: 0.85 },
-    { z:  1.21, halfWidth: 1.06, bottomY: 0.42, topY: 1.00 },
-    { z:  1.00, halfWidth: 0.98, bottomY: 0.44, topY: 0.78 }
+    { z:  1.57, halfWidth: 0.86, bottomY: 0.46, topY: 0.66 },
+    { z:  1.42, halfWidth: 1.02, bottomY: 0.44, topY: 0.85 },
+    { z:  1.21, halfWidth: 1.16, bottomY: 0.42, topY: 1.00 },
+    { z:  1.00, halfWidth: 1.06, bottomY: 0.44, topY: 0.78 }
   ];
 
   const rearShoulderStations = [
-    { z: -0.78, halfWidth: 0.95, bottomY: 0.46, topY: 0.78 },
-    { z: -1.12, halfWidth: 1.05, bottomY: 0.43, topY: 0.92 },
-    { z: -1.51, halfWidth: 1.10, bottomY: 0.42, topY: 1.05 },
-    { z: -1.84, halfWidth: 0.96, bottomY: 0.44, topY: 0.82 },
+    { z: -0.78, halfWidth: 1.02, bottomY: 0.46, topY: 0.78 },
+    { z: -1.12, halfWidth: 1.13, bottomY: 0.43, topY: 0.92 },
+    { z: -1.51, halfWidth: 1.20, bottomY: 0.42, topY: 1.05 },
+    { z: -1.84, halfWidth: 1.04, bottomY: 0.44, topY: 0.82 },
     // Extra tapering station so the fender blends into the tail
     // gradually instead of stopping abruptly - the hard stop right
     // here was reading as a sudden downward kink in the side profile.
@@ -517,24 +517,26 @@ function buildKazeR01(paintColorHex) {
   });
 
   // --------------------------------------------------------
-  // 5. Lower side sill
+  // 5. Lower side sill - lengthened and lowered so it reads as a
+  // continuous skirt running most of the car's length instead of a
+  // short segment.
   // --------------------------------------------------------
   [-1, 1].forEach(sign => {
     const sill = addTrapezoidPanel(
-      0.25, 0.34, 0.13, 1.28,
+      0.22, 0.30, 0.11, 1.85,
       carbonMat,
-      sign * 0.82,
-      groundClearance + 0.06,
-      -0.05
+      sign * 0.85,
+      groundClearance + 0.03,
+      -0.10
     );
 
     sill.rotation.y = 0;
   });
 
   // --------------------------------------------------------
-  // 6. Side intake
+  // 6. Side intake - enlarged into a bigger, clearly visible black
+  // opening rather than a small recessed sliver.
   // --------------------------------------------------------
-  // Recessed dark opening behind the door.
   [-1, 1].forEach(sign => {
     const intake = new THREE.Mesh(
       new THREE.ShapeGeometry(
@@ -548,12 +550,12 @@ function buildKazeR01(paintColorHex) {
       blackMat
     );
 
-    intake.scale.set(0.72, 1.0, 1.0);
+    intake.scale.set(1.15, 1.55, 1.0);
     intake.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
     intake.rotation.z = 0.08;
     intake.position.set(
-      sign * 0.905,
-      0.39,
+      sign * 0.915,
+      0.42,
       -0.68
     );
 
@@ -561,10 +563,10 @@ function buildKazeR01(paintColorHex) {
 
     // Intake roof/lip
     const lip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.045, 0.035, 0.46),
+      new THREE.BoxGeometry(0.05, 0.04, 0.62),
       carbonMat
     );
-    lip.position.set(sign * 0.92, 0.54, -0.68);
+    lip.position.set(sign * 0.93, 0.60, -0.68);
     lip.rotation.y = sign * 0.12;
     car.add(lip);
   });
@@ -585,13 +587,16 @@ function buildKazeR01(paintColorHex) {
     [-0.55, 0.06]
   ];
 
+  // Windshield extended further forward (more rake), and the roof
+  // lowered overall with a longer, lower taper toward the tail for a
+  // fastback line instead of a tall rounded bubble.
   const cabinStations = [
-    { z:  0.88, halfWidth: 0.49, bottomY: 0.63, topY: 0.69 },
-    { z:  0.55, halfWidth: 0.58, bottomY: 0.64, topY: 0.91 },
-    { z:  0.18, halfWidth: 0.62, bottomY: 0.72, topY: 1.08 },
-    { z: -0.30, halfWidth: 0.62, bottomY: 0.98, topY: 1.12 },
-    { z: -0.66, halfWidth: 0.56, bottomY: 0.90, topY: 1.05 },
-    { z: -0.95, halfWidth: 0.43, bottomY: 0.67, topY: 0.80 }
+    { z:  1.05, halfWidth: 0.50, bottomY: 0.58, topY: 0.62 },
+    { z:  0.60, halfWidth: 0.60, bottomY: 0.62, topY: 0.85 },
+    { z:  0.15, halfWidth: 0.63, bottomY: 0.70, topY: 1.00 },
+    { z: -0.35, halfWidth: 0.63, bottomY: 0.95, topY: 1.00 },
+    { z: -0.85, halfWidth: 0.54, bottomY: 0.85, topY: 0.86 },
+    { z: -1.15, halfWidth: 0.40, bottomY: 0.60, topY: 0.68 }
   ];
 
   const cabin = buildLoft(cabinStations, cabinCrossSection, glassMat);
@@ -658,62 +663,78 @@ function buildKazeR01(paintColorHex) {
     addBox(0.05, 0.02, 0.10, blackMat, sign * 0.955, 0.56, -0.05);
   });
 
-  // A-pillars, shortened slightly so the top sits at/just under the
-  // solid roof line instead of poking above it.
+  // A-pillars, repositioned to the new longer/lower windshield and
+  // kept flush so they connect roof-to-hood without a gap ("floating
+  // black parts" - the pillars/buttresses not meeting the body).
   [-1, 1].forEach(sign => {
     const pillar = new THREE.Mesh(
       new THREE.BoxGeometry(0.055, 0.40, 0.07),
       blackMat
     );
-    pillar.position.set(sign * 0.55, 0.80, 0.34);
-    pillar.rotation.x = -0.38;
+    pillar.position.set(sign * 0.56, 0.76, 0.40);
+    pillar.rotation.x = -0.40;
     car.add(pillar);
   });
 
-  // Rear buttresses, same reasoning: shortened to stay under the roof.
+  // Rear buttresses, same reasoning: lowered to meet the new, lower
+  // fastback roofline instead of poking above it.
   [-1, 1].forEach(sign => {
     const buttress = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 0.26, 0.10),
+      new THREE.BoxGeometry(0.11, 0.24, 0.10),
       blackMat
     );
-    buttress.position.set(sign * 0.51, 0.80, -0.79);
-    buttress.rotation.x = 0.28;
+    buttress.position.set(sign * 0.51, 0.75, -0.79);
+    buttress.rotation.x = 0.30;
     car.add(buttress);
   });
 
   // --------------------------------------------------------
   // 8. Front nose / splitter / headlights
   // --------------------------------------------------------
-  // Splitter kept close to the actual body width at this z (roughly
-  // matching the nose's own halfWidth here) instead of sticking out
-  // far past it - a wide thin panel jutting out past the narrower
-  // nose was exactly what read as a "thin blade" tip.
-  addBox(
-    1.06, 0.045, 0.20,
-    carbonMat,
-    0, groundClearance + 0.012, 2.08
-  );
+  // A separate low, pointed splitter blade (its own flat panel,
+  // coming to a sharp point ahead of the main nose tip) instead of a
+  // plain rectangle - this is what gives the "low, pointed nose" look
+  // while the main hood body above it keeps its volume.
+  {
+    const y = groundClearance + 0.012;
+    const positions = [
+      -0.50, y, 1.95,
+      -0.30, y, 2.20,
+       0.00, y, 2.32,
+       0.30, y, 2.20,
+       0.50, y, 1.95
+    ];
+    const indices = [0, 1, 2, 0, 2, 3, 0, 3, 4];
+    const splitter = meshFromVertices(positions, carbonMat, indices);
+    car.add(splitter);
+    // thin vertical lip along the leading edges for a bit of thickness
+    const lipMat = carbonMat;
+    [-1, 1].forEach(sign => {
+      const lip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.30), lipMat);
+      lip.position.set(sign * 0.24, y + 0.01, 2.10);
+      lip.rotation.y = sign * -0.62;
+      car.add(lip);
+    });
+  }
 
-  // Central grille opening (hexagonal), between the splitter and the
-  // hood tip, so the front reads as having a defined grille/intake
-  // instead of one continuous unbroken panel.
+  // Central grille opening - wide and flat/horizontal, angular corners.
   {
     const grilleShape = new THREE.Shape();
-    grilleShape.moveTo(-0.30, 0.0);
-    grilleShape.lineTo(-0.20, 0.14);
-    grilleShape.lineTo(0.20, 0.14);
-    grilleShape.lineTo(0.30, 0.0);
-    grilleShape.lineTo(0.20, -0.10);
-    grilleShape.lineTo(-0.20, -0.10);
+    grilleShape.moveTo(-0.42, 0.0);
+    grilleShape.lineTo(-0.34, 0.10);
+    grilleShape.lineTo(0.34, 0.10);
+    grilleShape.lineTo(0.42, 0.0);
+    grilleShape.lineTo(0.34, -0.08);
+    grilleShape.lineTo(-0.34, -0.08);
     grilleShape.closePath();
     const grille = new THREE.Mesh(new THREE.ShapeGeometry(grilleShape), blackMat);
     grille.position.set(0, 0.36, 2.155);
     grille.rotation.y = Math.PI;
     car.add(grille);
-    // slim horizontal grille slats
+    // slim horizontal grille slats, widened to match
     for (let i = 0; i < 3; i++) {
-      const slat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.012, 0.02), carbonMat);
-      slat.position.set(0, 0.30 + i * 0.045, 2.15);
+      const slat = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.012, 0.02), carbonMat);
+      slat.position.set(0, 0.31 + i * 0.04, 2.15);
       car.add(slat);
     }
   }
@@ -725,12 +746,28 @@ function buildKazeR01(paintColorHex) {
     0, groundClearance + 0.16, 2.05
   );
 
+  // Hood vents - two shallow recessed ducts either side of centerline.
   [-1, 1].forEach(sign => {
-    // Thin headlight housing
-    const lamp = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.055, 0.055),
-      frontLightMat
-    );
+    const ventShape = new THREE.Shape();
+    ventShape.moveTo(-0.09, -0.14);
+    ventShape.lineTo(0.09, -0.10);
+    ventShape.lineTo(0.07, 0.13);
+    ventShape.lineTo(-0.11, 0.10);
+    ventShape.closePath();
+    const vent = new THREE.Mesh(new THREE.ShapeGeometry(ventShape), blackMat);
+    vent.rotation.x = -Math.PI / 2 + 0.55;
+    vent.position.set(sign * 0.34, 0.615, 1.68);
+    car.add(vent);
+  });
+
+  [-1, 1].forEach(sign => {
+    // Slim triangular headlight, angled back along the fender.
+    const headlightShape = new THREE.Shape();
+    headlightShape.moveTo(-0.20, -0.018);
+    headlightShape.lineTo(0.20, 0.040);
+    headlightShape.lineTo(0.20, -0.030);
+    headlightShape.closePath();
+    const lamp = new THREE.Mesh(new THREE.ShapeGeometry(headlightShape), frontLightMat);
     lamp.position.set(sign * 0.56, 0.48, 1.92);
     lamp.rotation.y = sign * 0.19;
     car.add(lamp);
@@ -755,26 +792,43 @@ function buildKazeR01(paintColorHex) {
   // 9. Rear body / diffuser / tail
   // --------------------------------------------------------
   // Keep all rear lighting physically attached to the rear body.
-  // Repositioned to match the current (lower/flatter) tail height -
-  // the lamp's Y had been left over from an earlier, taller tail
-  // shape and had drifted well above the actual body surface there.
+  // Widened into a single continuous horizontal light bar spanning
+  // nearly the full tail width, with the two ends wrapping slightly
+  // around the corners - a wide/horizontal taillight instead of a
+  // narrow centered strip.
   addBox(
-    1.62, 0.16, 0.09,
+    1.68, 0.15, 0.09,
     blackMat,
     0, 0.40, -2.24
   );
 
   addBox(
-    1.18, 0.038, 0.030,
+    1.55, 0.032, 0.032,
     rearLightMat,
     0, 0.435, -2.292
   );
 
-  // Rear diffuser
+  [-1, 1].forEach(sign => {
+    const wrap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.028, 0.03),
+      rearLightMat
+    );
+    wrap.position.set(sign * 0.86, 0.435, -2.27);
+    wrap.rotation.y = sign * 0.55;
+    car.add(wrap);
+  });
+
+  // Rear diffuser - widened, and given a second, wider lower tier so
+  // it reads as a stepped diffuser instead of one flat panel.
   addTrapezoidPanel(
-    0.72, 0.96, 0.18, 0.28,
+    0.92, 1.30, 0.16, 0.26,
     carbonMat,
-    0, groundClearance + 0.09, -2.17
+    0, groundClearance + 0.10, -2.16
+  );
+  addTrapezoidPanel(
+    1.10, 1.50, 0.07, 0.16,
+    carbonMat,
+    0, groundClearance + 0.03, -2.10
   );
 
   for (let i = -2; i <= 2; i++) {
@@ -807,23 +861,25 @@ function buildKazeR01(paintColorHex) {
   });
 
   // --------------------------------------------------------
-  // 10. Rear wing
+  // 10. Rear wing - lower, thinner, smaller end plates, and struts
+  // shortened to match so the whole assembly sits closer to the
+  // body instead of floating high above it.
   // --------------------------------------------------------
   const wingZ = -1.96;
-  const wingY = 0.98;
+  const wingY = 0.88;
 
   [-1, 1].forEach(sign => {
     const strut = new THREE.Mesh(
-      new THREE.BoxGeometry(0.055, 0.35, 0.075),
+      new THREE.BoxGeometry(0.055, 0.26, 0.075),
       carbonMat
     );
-    strut.position.set(sign * 0.44, 0.82, wingZ);
+    strut.position.set(sign * 0.44, 0.75, wingZ);
     strut.rotation.x = -0.16;
     car.add(strut);
   });
 
   const wing = new THREE.Mesh(
-    new THREE.BoxGeometry(1.48, 0.045, 0.24),
+    new THREE.BoxGeometry(1.48, 0.028, 0.20),
     carbonMat
   );
   wing.position.set(0, wingY, wingZ);
@@ -833,7 +889,7 @@ function buildKazeR01(paintColorHex) {
 
   [-1, 1].forEach(sign => {
     const plate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.035, 0.19, 0.29),
+      new THREE.BoxGeometry(0.025, 0.13, 0.22),
       carbonMat
     );
     plate.position.set(sign * 0.73, wingY, wingZ);

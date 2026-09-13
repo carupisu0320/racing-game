@@ -28,7 +28,7 @@ function buildKazeR01(paintColorHex) {
   const car = new THREE.Group();
 
   // モデルの向きを直したいときに書き換える角度(ラジアン)
-  const YAW_CORRECTION = -Math.PI / 2
+  const YAW_CORRECTION = Math.PI / 2; // 横向きだったため90度回転して前向きにする
 
   // 実車寸法に合わせる目標値(1 Three.js unit = 1 メートル)
   const TARGET_LENGTH = 4.52;
@@ -111,6 +111,11 @@ function buildKazeR01(paintColorHex) {
     console.error('THREE.GLTFLoaderが読み込まれていません。index.htmlのscriptタグを確認してください。');
   } else {
     const loader = new THREE.GLTFLoader();
+    if (typeof THREE.DRACOLoader === 'function') {
+      const dracoLoader = new THREE.DRACOLoader();
+      dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+      loader.setDRACOLoader(dracoLoader);
+    }
     loader.load(
       'models/kaze-r01.glb',
       (gltf) => {
@@ -140,10 +145,29 @@ function buildKazeR01(paintColorHex) {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
+
+            // 車体(ボディ)らしいマテリアルを判定して塗装色を反映する。
+            // マテリアル名に手がかりがあればそれを優先し、無ければ
+            // 「暗すぎない色」を車体とみなす(タイヤ・ガラス・内装は暗い色が多いため)。
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((mat) => {
+              if (!mat || !mat.color) return;
+              const name = (mat.name || '').toLowerCase();
+              const looksLikeBody = /body|paint|car|main|exterior|shell/.test(name);
+              const looksLikeExcluded = /glass|window|tire|tyre|wheel|rim|light|lamp|black|chrome/.test(name);
+              const hsl = { h: 0, s: 0, l: 0 };
+              mat.color.getHSL(hsl);
+              const isLightEnough = hsl.l > 0.35; // 暗すぎる(タイヤ等)は除外
+              if (looksLikeBody || (!looksLikeExcluded && isLightEnough)) {
+                mat.color.set(paintColor);
+                mat.needsUpdate = true;
+              }
+            });
           }
         });
 
         car.add(model);
+        console.log('KAZE R-01(models/kaze-r01.glb)の読み込みに成功しました。');
       },
       undefined,
       (error) => {

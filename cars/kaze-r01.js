@@ -226,13 +226,94 @@ function buildKazeR01(paintColorHex) {
               }
             });
 
-            // ステアリングホイールの回転アニメーションには使わない: 今回の
-            // 内装はホイールとダッシュボードが1つに結合されたメッシュなので、
-            // steeringWheelグループに入れて回転させると、ダッシュボードまで
-            // 一緒に回ってしまう。見た目は静止したままになるが、
-            // interiorGroup(回転しない方)に入れる。
+            // 今回のモデルはシート+ダッシュボードのみ(ハンドル無し)。
+            // 回転させる必要が無いので、そのままinteriorGroupに追加する。
             interiorGroup.add(interior);
-            console.log('内装(models/kaze-r01-interior.glb)の読み込みに成功しました。');
+            console.log('内装(シート+ダッシュボード)の読み込みに成功しました。');
+
+            // ==========================================================
+            // ロールケージ風フレーム(フロントガラスの枠・屋根・サイド)を
+            // 単純な図形で自作する。AIでの生成が何度も車全体になって
+            // しまったため、ここは確実に位置を制御できる方法にした。
+            // ==========================================================
+            const cageMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, metalness: 0.6, roughness: 0.4 });
+            const barRadius = 0.025;
+
+            const cageHalfWidth = 0.68;
+            const floorY = EYE_Y - INTERIOR_DROP_OFFSET - 0.30; // 内装の足元あたり
+            const roofY = EYE_Y + 0.28;
+            const windshieldZ = EYE_Z + INTERIOR_FORWARD_OFFSET + 0.35;
+            const rearZ = EYE_Z - 0.55;
+
+            function addBar(x1, y1, z1, x2, y2, z2) {
+              const a = new THREE.Vector3(x1, y1, z1);
+              const b = new THREE.Vector3(x2, y2, z2);
+              const len = a.distanceTo(b);
+              const bar = new THREE.Mesh(
+                new THREE.CylinderGeometry(barRadius, barRadius, len, 8),
+                cageMat
+              );
+              bar.position.copy(a).add(b).multiplyScalar(0.5);
+              bar.quaternion.setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0),
+                b.clone().sub(a).normalize()
+              );
+              bar.castShadow = true;
+              interiorGroup.add(bar);
+            }
+
+            // フロントガラスの枠(縦2本+上1本)
+            addBar(-cageHalfWidth, floorY + 0.55, windshieldZ, -cageHalfWidth, roofY, windshieldZ);
+            addBar(cageHalfWidth, floorY + 0.55, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+            addBar(-cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+
+            // 屋根(前後を繋ぐ2本+リア側の横棒)
+            addBar(-cageHalfWidth, roofY, windshieldZ, -cageHalfWidth, roofY, rearZ);
+            addBar(cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, rearZ);
+            addBar(-cageHalfWidth, roofY, rearZ, cageHalfWidth, roofY, rearZ);
+
+            // サイド(ドア枠、左右それぞれ縦1本)
+            addBar(-cageHalfWidth, floorY + 0.50, rearZ, -cageHalfWidth, roofY, rearZ);
+            addBar(cageHalfWidth, floorY + 0.50, rearZ, cageHalfWidth, roofY, rearZ);
+
+            // ==========================================================
+            // ハンドルも単純な図形で自作する。steeringWheelグループに
+            // 入れるので、既存のステアリング操作の回転アニメーションが
+            // そのまま効く。
+            // ==========================================================
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+            const hubMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.5, roughness: 0.4 });
+
+            const wheelRing = new THREE.Mesh(
+              new THREE.TorusGeometry(0.16, 0.018, 10, 24),
+              wheelMat
+            );
+            steeringWheel.add(wheelRing);
+
+            const wheelHub = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
+              hubMat
+            );
+            wheelHub.rotation.x = Math.PI / 2;
+            steeringWheel.add(wheelHub);
+
+            [0, 1, 2].forEach((i) => {
+              const angle = (i / 3) * Math.PI * 2;
+              const spoke = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.13, 0.015),
+                wheelMat
+              );
+              spoke.position.set(Math.cos(angle) * 0.08, Math.sin(angle) * 0.08, 0);
+              spoke.rotation.z = angle + Math.PI / 2;
+              steeringWheel.add(spoke);
+            });
+
+            steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
+            steeringWheel.position.set(
+              -0.28,
+              EYE_Y - 0.30,
+              EYE_Z + INTERIOR_FORWARD_OFFSET - 0.10
+            );
           },
           undefined,
           (interiorError) => {

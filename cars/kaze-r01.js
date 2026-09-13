@@ -217,7 +217,12 @@ function buildKazeR01(paintColorHex) {
             interior.position.y = EYE_Y - INTERIOR_DROP_OFFSET;
             interior.position.z = EYE_Z + INTERIOR_FORWARD_OFFSET;
 
-            interior.rotation.y = YAW_CORRECTION;
+            // 内装は外装とは別のAI生成なので、外装用のYAW_CORRECTIONを
+            // そのまま使い回すのではなく、内装専用の角度を用意した。
+            // 横向きになる場合は、この値を Math.PI / 2 や -Math.PI / 2、
+            // Math.PI(180度)などに変えて試してください。
+            const INTERIOR_YAW_CORRECTION = 0;
+            interior.rotation.y = INTERIOR_YAW_CORRECTION;
 
             interior.traverse((child) => {
               if (child.isMesh) {

@@ -153,7 +153,8 @@ function buildKazeR01(paintColorHex) {
         //          反転するか、値を大きく/小さくして探ってください)
         const EYE_X = 0;
         const EYE_Y = 0.80;
-        const EYE_Z = 0.10;
+        const EYE_Z = -0.5; // ノーズが長いプロポーションだと中心がフロントトランク寄りに
+                             // なるため、大きく後ろ(キャビン側)へ動かして試す
 
         firstPersonOffset.set(EYE_X, EYE_Y, EYE_Z);
 

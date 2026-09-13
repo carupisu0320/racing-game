@@ -141,28 +141,28 @@ function buildKazeR01(paintColorHex) {
         model.position.z -= center.z;
         model.position.y -= box2.min.y;
 
+        // 一人称視点の目の位置を、固定値ではなくモデルの実寸から自動推定する。
+        // 前の(手続き型モデル用の)固定値のままだと、今回のようにモデルの
+        // 比率が違うと視点が車体メッシュの内部に埋まってしまうことがある。
+        // ※あくまで大まかな推定(車の高さの約6割・やや前寄り)なので、
+        //   実際に一人称視点を試して不自然なら数値を微調整してください。
+        const box3 = new THREE.Box3().setFromObject(model);
+        const finalSize = new THREE.Vector3();
+        box3.getSize(finalSize);
+        firstPersonOffset.set(
+          -finalSize.x * 0.12,
+          finalSize.y * 0.62,
+          finalSize.z * 0.08
+        );
+
         model.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
-
-            // 車体(ボディ)らしいマテリアルを判定して塗装色を反映する。
-            // マテリアル名に手がかりがあればそれを優先し、無ければ
-            // 「暗すぎない色」を車体とみなす(タイヤ・ガラス・内装は暗い色が多いため)。
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            materials.forEach((mat) => {
-              if (!mat || !mat.color) return;
-              const name = (mat.name || '').toLowerCase();
-              const looksLikeBody = /body|paint|car|main|exterior|shell/.test(name);
-              const looksLikeExcluded = /glass|window|tire|tyre|wheel|rim|light|lamp|black|chrome/.test(name);
-              const hsl = { h: 0, s: 0, l: 0 };
-              mat.color.getHSL(hsl);
-              const isLightEnough = hsl.l > 0.35; // 暗すぎる(タイヤ等)は除外
-              if (looksLikeBody || (!looksLikeExcluded && isLightEnough)) {
-                mat.color.set(paintColor);
-                mat.needsUpdate = true;
-              }
-            });
+            // 塗装色の上書きはしない: 今回のモデルはボディ・ガラス・タイヤの
+            // 色分けがテクスチャに焼き込まれているため、ここで色を上書きすると
+            // 全体が一色に塗り潰されて、その色分けが台無しになってしまう。
+            // (このモデルでは「プレイヤーが塗装色を選べる」機能は使えない)
           }
         });
 

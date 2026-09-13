@@ -68,6 +68,7 @@
 <body>
 <div id="game-root">
 <div id="hud">矢印キー / WASD で運転 ・ ドラッグでマウス視点操作 ・ Cキーで一人称/三人称切り替え ・ Eキーで編集モード(開発者用) ・ -/;キーでラジオ局切り替え ・ Mキーでマップ ・ Hキーでクラクション ・ Spaceキーでサイドブレーキ(ドリフト) ・ Zキーでこのメニューの表示/非表示 ・ Vキーで車を切り替え</div>
+<div id="eyeCalibHud" style="position:fixed; top:96px; left:12px; z-index:30; background:rgba(20,20,25,0.75); color:#fff; font-family:sans-serif; font-size:13px; padding:8px 12px; border-radius:8px; display:none; white-space:pre-line;"></div>
 <div id="radioLabel"></div>
 <div id="carLabel">🚗 スポーツカー</div>
 <div id="mapOverlay"><canvas id="mapCanvas" width="700" height="700"></canvas></div>
@@ -1727,9 +1728,39 @@ function drawMap() {
 function updateCamera(dt) {
   if (cameraMode === 'firstPerson') {
     updateFirstPersonCamera(dt);
+    updateEyeCalibration(dt);
   } else {
     updateChaseCamera(dt);
+    document.getElementById('eyeCalibHud').style.display = 'none';
   }
+}
+
+// ==========================================================
+// 【仮設・視点調整用】一人称視点の目の位置(firstPersonOffset)を、
+// その場でキー操作して動かせるようにするデバッグ機能。
+// 位置が決まったら、表示される数値を教えてもらい、コード側に
+// 固定値として書き込んで、この仕組みごと削除する想定。
+//   I / K : 前後(車の向きに対して)
+//   J / L : 左右
+//   U / O : 上下
+//   (Shiftを押しながらだと大きいステップで動く)
+// ==========================================================
+function updateEyeCalibration(dt) {
+  if (!firstPersonOffset) return;
+  const hud = document.getElementById('eyeCalibHud');
+  hud.style.display = 'block';
+
+  const step = (keys['shift'] ? 1.0 : 0.25) * dt;
+  if (keys['i']) firstPersonOffset.z += step;
+  if (keys['k']) firstPersonOffset.z -= step;
+  if (keys['l']) firstPersonOffset.x += step;
+  if (keys['j']) firstPersonOffset.x -= step;
+  if (keys['u']) firstPersonOffset.y += step;
+  if (keys['o']) firstPersonOffset.y -= step;
+
+  hud.textContent =
+    '【視点調整モード】I/K:前後  J/L:左右  U/O:上下  (Shiftで大きく動く)\n' +
+    `x=${firstPersonOffset.x.toFixed(3)}  y=${firstPersonOffset.y.toFixed(3)}  z=${firstPersonOffset.z.toFixed(3)}`;
 }
 
 function updateChaseCamera(dt) {

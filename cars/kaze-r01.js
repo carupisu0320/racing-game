@@ -28,7 +28,7 @@ function buildKazeR01(paintColorHex) {
   const car = new THREE.Group();
 
   // モデルの向きを直したいときに書き換える角度(ラジアン)
-  const YAW_CORRECTION = 0;
+  const YAW_CORRECTION = -Math.PI / 2;
 
   // 実車寸法に合わせる目標値(1 Three.js unit = 1 メートル)
   const TARGET_LENGTH = 4.52;

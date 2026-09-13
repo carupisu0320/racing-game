@@ -142,43 +142,20 @@ function buildKazeR01(paintColorHex) {
         model.position.y -= box2.min.y;
         model.updateMatrixWorld(true);
 
-        // 一人称視点の目の位置を、中心1点への単発のレイではなく、
-        // 前後方向に何点かサンプリングして決める。1点だけだと、そこが
-        // ウイングの支柱の隙間やフロントトランクの中に当たってしまうことが
-        // あったため、複数サンプルの「中央値の高さ」を採用することで、
-        // 極端に高い(ウイングの頂点)/低い(隙間・車内の床)値に
-        // 引きずられにくくしている。
-        const box3 = new THREE.Box3().setFromObject(model);
-        const finalSize = new THREE.Vector3();
-        box3.getSize(finalSize);
+        // 一人称視点の目の位置。自動推定(レイキャストで中央値の高さを探す方式)は
+        // このモデルではうまく機能せず、フロントトランク付近に着地してしまったため、
+        // 分かりやすい手動調整の数値に切り替えた。
+        // ここの3つの値だけを見ながら、実際の見え方に合わせて調整してください。
+        //   EYE_X: 左右位置(0=中央)
+        //   EYE_Y: 地面からの高さ(m、実車の目線として自然な値から開始)
+        //   EYE_Z: 前後位置(0=バウンディングボックスの中心。＋方向がノーズ側か
+        //          テール側かは実際に試すまで分からないため、ズレていたら符号を
+        //          反転するか、値を大きく/小さくして探ってください)
+        const EYE_X = 0;
+        const EYE_Y = 0.80;
+        const EYE_Z = 0.10;
 
-        const sampleCount = 11;
-        const heightSamples = [];
-        for (let i = 0; i < sampleCount; i++) {
-          const t = i / (sampleCount - 1);
-          const sampleZ = box3.min.z + t * finalSize.z;
-          const origin = new THREE.Vector3(0, box3.max.y + 3, sampleZ);
-          const rc = new THREE.Raycaster(origin, new THREE.Vector3(0, -1, 0));
-          const hits = rc.intersectObject(model, true);
-          if (hits.length > 0) {
-            heightSamples.push({ z: sampleZ, y: hits[0].point.y });
-          }
-        }
-
-        let eyeZ = 0;
-        let roofY = finalSize.y * 0.75; // レイが1本も当たらなかった場合の保険
-        if (heightSamples.length > 0) {
-          heightSamples.sort((a, b) => a.y - b.y);
-          const median = heightSamples[Math.floor(heightSamples.length / 2)];
-          eyeZ = median.z;
-          roofY = median.y;
-        }
-
-        firstPersonOffset.set(
-          0,                                          // 左右は中央(ホイールに埋まるのを避ける)
-          Math.max(finalSize.y * 0.35, roofY - 0.16),  // 中央値の高さの少し下
-          eyeZ                                         // その高さが測れた前後位置
-        );
+        firstPersonOffset.set(EYE_X, EYE_Y, EYE_Z);
 
         model.traverse((child) => {
           if (child.isMesh) {
@@ -197,13 +174,13 @@ function buildKazeR01(paintColorHex) {
         // ==========================================================
         // 内装(ハンドル+ダッシュボード、Meshyで別途生成したもの)を読み込む。
         // 外装のコックピット位置を厳密には知らないので、上で計算した
-        // 「一人称視点の目の位置」(eyeZ / roofY)を手がかりに、
+        // 「一人称視点の目の位置」(EYE_Z / EYE_Y)を手がかりに、
         // その少し前方・下あたりに置く。ズレていたら INTERIOR_* の
         // 数値を微調整してください。
         // ==========================================================
         const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
-        const INTERIOR_FORWARD_OFFSET = 0.35; // 目の位置から、さらに前へ(m)
-        const INTERIOR_DROP_OFFSET = 0.38; // 目の位置から、下へ(m)
+        const INTERIOR_FORWARD_OFFSET = 0.55; // 目の位置から、さらに前へ(m)
+        const INTERIOR_DROP_OFFSET = 0.30; // 目の位置から、下へ(m)
 
         loader.load(
           'models/kaze-r01-interior.glb',
@@ -225,11 +202,11 @@ function buildKazeR01(paintColorHex) {
             interior.position.z -= iCenter.z;
 
             // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
-            // あとはコックピットの推定位置(eyeZ / roofY)を基準に、
+            // あとはコックピットの推定位置(EYE_Z / EYE_Y)を基準に、
             // 前方・下方向へオフセットするだけでよい。
             interior.position.x = 0;
-            interior.position.y = roofY - INTERIOR_DROP_OFFSET;
-            interior.position.z = eyeZ + INTERIOR_FORWARD_OFFSET;
+            interior.position.y = EYE_Y - INTERIOR_DROP_OFFSET;
+            interior.position.z = EYE_Z + INTERIOR_FORWARD_OFFSET;
 
             interior.rotation.y = YAW_CORRECTION;
 

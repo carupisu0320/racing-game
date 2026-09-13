@@ -140,19 +140,27 @@ function buildKazeR01(paintColorHex) {
         model.position.x -= center.x;
         model.position.z -= center.z;
         model.position.y -= box2.min.y;
+        model.updateMatrixWorld(true);
 
-        // 一人称視点の目の位置を、固定値ではなくモデルの実寸から自動推定する。
-        // 前の(手続き型モデル用の)固定値のままだと、今回のようにモデルの
-        // 比率が違うと視点が車体メッシュの内部に埋まってしまうことがある。
-        // ※あくまで大まかな推定(車の高さの約6割・やや前寄り)なので、
-        //   実際に一人称視点を試して不自然なら数値を微調整してください。
+        // 一人称視点の目の位置を、固定の比率での推測ではなく、実際にモデルへ
+        // 下向きにレイを飛ばして「車体中心の屋根の高さ」を測ることで決める。
+        // (前回は「車の高さ」の比率で計算していたが、リアウイングが全高を
+        //  実際より高く見せてしまい、結果としてタイヤやディフューザーに近い、
+        //  低すぎる位置になっていた)
         const box3 = new THREE.Box3().setFromObject(model);
         const finalSize = new THREE.Vector3();
         box3.getSize(finalSize);
+
+        const eyeRayOrigin = new THREE.Vector3(0, finalSize.y + 3, 0);
+        const eyeRaycaster = new THREE.Raycaster(eyeRayOrigin, new THREE.Vector3(0, -1, 0));
+        const eyeHits = eyeRaycaster.intersectObject(model, true);
+        // レイが当たらなかった場合の保険として、全高の75%あたりを使う
+        const roofY = eyeHits.length > 0 ? eyeHits[0].point.y : finalSize.y * 0.75;
+
         firstPersonOffset.set(
-          -finalSize.x * 0.12,
-          finalSize.y * 0.62,
-          finalSize.z * 0.08
+          0,                                  // 左右は中央(ホイールの内側に埋まるのを避ける)
+          Math.max(finalSize.y * 0.35, roofY - 0.16), // 測った屋根の少し下
+          0                                   // 前後も中央
         );
 
         model.traverse((child) => {

@@ -1727,6 +1727,12 @@ function drawMap() {
 }
 
 function updateCamera(dt) {
+  // 内装(シート・ダッシュボード・ハンドル)は、三人称視点のときは
+  // 見えないようにする(外装の中に浮いて見えてしまうため)。
+  if (interiorGroup) {
+    interiorGroup.visible = cameraMode === 'firstPerson';
+  }
+
   if (cameraMode === 'firstPerson') {
     updateFirstPersonCamera(dt);
     updateEyeCalibration(dt);

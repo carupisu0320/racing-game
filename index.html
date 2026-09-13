@@ -1236,7 +1236,7 @@ function updateSpeedDisplay() {
 // 新しい車を追加したいときは、同じ形式で cars/新しい名前.js を作り、
 // <script>タグを1行追加するだけで、Vキーで選べるようになる。
 // ==========================================================
-let car, paintMat, interiorGroup, steeringWheel, firstPersonOffset;
+let car, paintMat, interiorGroup, steeringWheel, firstPersonOffset, exteriorModelRef;
 let mirrorRenderTarget, mirrorCamera, updateMirrorCamera;
 let sideMirrorRTs, sideMirrorCams, updateSideMirrorCameras;
 let carModelHalfTrack = 1.05, carModelHalfWheelbase = 1.55, carModelCollisionRadius = 1.7;
@@ -1258,6 +1258,7 @@ function loadCarModel(key, paintColorHex) {
   interiorGroup = model.interiorGroup;
   steeringWheel = model.steeringWheel;
   firstPersonOffset = model.firstPersonOffset;
+  exteriorModelRef = model.exteriorModelRef; // 無い車種(手続き型など)ではundefinedのまま
   mirrorRenderTarget = model.mirrorRenderTarget;
   mirrorCamera = model.mirrorCamera;
   updateMirrorCamera = model.updateMirrorCamera;
@@ -1831,7 +1832,17 @@ function animate() {
   car.visible = true;
 
   renderer.setRenderTarget(null);
+
+  // 一人称視点のときだけ、自分の外装(.glb本体)を隠して描画する。
+  // (内装・ハンドルはinteriorGroup側なので、これとは別で隠さず残る)
+  // オンライン対戦化した際には、この「隠す/隠さない」の判定を
+  // 「自分のカメラで描画するときだけ」に限定すれば、他プレイヤーの
+  // 画面には常に外装が表示された状態にできる(サイドミラーの描画で
+  // 既にやっているのと同じ考え方)。
+  const hideExterior = cameraMode === 'firstPerson' && exteriorModelRef && exteriorModelRef.model;
+  if (hideExterior) exteriorModelRef.model.visible = false;
   renderer.render(scene, camera);
+  if (hideExterior) exteriorModelRef.model.visible = true;
 }
 
 // ==========================================================

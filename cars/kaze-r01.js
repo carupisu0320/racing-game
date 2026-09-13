@@ -142,25 +142,42 @@ function buildKazeR01(paintColorHex) {
         model.position.y -= box2.min.y;
         model.updateMatrixWorld(true);
 
-        // 一人称視点の目の位置を、固定の比率での推測ではなく、実際にモデルへ
-        // 下向きにレイを飛ばして「車体中心の屋根の高さ」を測ることで決める。
-        // (前回は「車の高さ」の比率で計算していたが、リアウイングが全高を
-        //  実際より高く見せてしまい、結果としてタイヤやディフューザーに近い、
-        //  低すぎる位置になっていた)
+        // 一人称視点の目の位置を、中心1点への単発のレイではなく、
+        // 前後方向に何点かサンプリングして決める。1点だけだと、そこが
+        // ウイングの支柱の隙間やフロントトランクの中に当たってしまうことが
+        // あったため、複数サンプルの「中央値の高さ」を採用することで、
+        // 極端に高い(ウイングの頂点)/低い(隙間・車内の床)値に
+        // 引きずられにくくしている。
         const box3 = new THREE.Box3().setFromObject(model);
         const finalSize = new THREE.Vector3();
         box3.getSize(finalSize);
 
-        const eyeRayOrigin = new THREE.Vector3(0, finalSize.y + 3, 0);
-        const eyeRaycaster = new THREE.Raycaster(eyeRayOrigin, new THREE.Vector3(0, -1, 0));
-        const eyeHits = eyeRaycaster.intersectObject(model, true);
-        // レイが当たらなかった場合の保険として、全高の75%あたりを使う
-        const roofY = eyeHits.length > 0 ? eyeHits[0].point.y : finalSize.y * 0.75;
+        const sampleCount = 11;
+        const heightSamples = [];
+        for (let i = 0; i < sampleCount; i++) {
+          const t = i / (sampleCount - 1);
+          const sampleZ = box3.min.z + t * finalSize.z;
+          const origin = new THREE.Vector3(0, box3.max.y + 3, sampleZ);
+          const rc = new THREE.Raycaster(origin, new THREE.Vector3(0, -1, 0));
+          const hits = rc.intersectObject(model, true);
+          if (hits.length > 0) {
+            heightSamples.push({ z: sampleZ, y: hits[0].point.y });
+          }
+        }
+
+        let eyeZ = 0;
+        let roofY = finalSize.y * 0.75; // レイが1本も当たらなかった場合の保険
+        if (heightSamples.length > 0) {
+          heightSamples.sort((a, b) => a.y - b.y);
+          const median = heightSamples[Math.floor(heightSamples.length / 2)];
+          eyeZ = median.z;
+          roofY = median.y;
+        }
 
         firstPersonOffset.set(
-          0,                                  // 左右は中央(ホイールの内側に埋まるのを避ける)
-          Math.max(finalSize.y * 0.35, roofY - 0.16), // 測った屋根の少し下
-          0                                   // 前後も中央
+          0,                                          // 左右は中央(ホイールに埋まるのを避ける)
+          Math.max(finalSize.y * 0.35, roofY - 0.16),  // 中央値の高さの少し下
+          eyeZ                                         // その高さが測れた前後位置
         );
 
         model.traverse((child) => {
@@ -176,6 +193,66 @@ function buildKazeR01(paintColorHex) {
 
         car.add(model);
         console.log('KAZE R-01(models/kaze-r01.glb)の読み込みに成功しました。');
+
+        // ==========================================================
+        // 内装(ハンドル+ダッシュボード、Meshyで別途生成したもの)を読み込む。
+        // 外装のコックピット位置を厳密には知らないので、上で計算した
+        // 「一人称視点の目の位置」(eyeZ / roofY)を手がかりに、
+        // その少し前方・下あたりに置く。ズレていたら INTERIOR_* の
+        // 数値を微調整してください。
+        // ==========================================================
+        const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
+        const INTERIOR_FORWARD_OFFSET = 0.35; // 目の位置から、さらに前へ(m)
+        const INTERIOR_DROP_OFFSET = 0.38; // 目の位置から、下へ(m)
+
+        loader.load(
+          'models/kaze-r01-interior.glb',
+          (interiorGltf) => {
+            const interior = interiorGltf.scene;
+
+            const iBox = new THREE.Box3().setFromObject(interior);
+            const iSize = new THREE.Vector3();
+            iBox.getSize(iSize);
+            if (iSize.x > 0) {
+              interior.scale.setScalar(INTERIOR_TARGET_WIDTH / iSize.x);
+            }
+
+            const iBox2 = new THREE.Box3().setFromObject(interior);
+            const iCenter = new THREE.Vector3();
+            iBox2.getCenter(iCenter);
+            interior.position.x -= iCenter.x;
+            interior.position.y -= iCenter.y;
+            interior.position.z -= iCenter.z;
+
+            // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
+            // あとはコックピットの推定位置(eyeZ / roofY)を基準に、
+            // 前方・下方向へオフセットするだけでよい。
+            interior.position.x = 0;
+            interior.position.y = roofY - INTERIOR_DROP_OFFSET;
+            interior.position.z = eyeZ + INTERIOR_FORWARD_OFFSET;
+
+            interior.rotation.y = YAW_CORRECTION;
+
+            interior.traverse((child) => {
+              if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+
+            // ステアリングホイールの回転アニメーションには使わない: 今回の
+            // 内装はホイールとダッシュボードが1つに結合されたメッシュなので、
+            // steeringWheelグループに入れて回転させると、ダッシュボードまで
+            // 一緒に回ってしまう。見た目は静止したままになるが、
+            // interiorGroup(回転しない方)に入れる。
+            interiorGroup.add(interior);
+            console.log('内装(models/kaze-r01-interior.glb)の読み込みに成功しました。');
+          },
+          undefined,
+          (interiorError) => {
+            console.warn('内装(models/kaze-r01-interior.glb)が見つからないか読み込みに失敗しました。内装なしで続行します。', interiorError);
+          }
+        );
       },
       undefined,
       (error) => {

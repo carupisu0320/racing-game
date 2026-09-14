@@ -181,14 +181,14 @@ function buildKazeR01(paintColorHex) {
 
         // ==========================================================
         // 内装(ハンドル+ダッシュボード、Meshyで別途生成したもの)を読み込む。
-        // 外装のコックピット位置を厳密には知らないので、上で計算した
-        // 「一人称視点の目の位置」(EYE_Z / EYE_Y)を手がかりに、
-        // その少し前方・下あたりに置く。ズレていたら INTERIOR_* の
-        // 数値を微調整してください。
+        // 【重要】内装の位置は、視点(EYE_X/Y/Z)とは切り離して、車体側に
+        // 固定の位置(CABIN_Y / CABIN_Z)を使う。視点だけを動かしても
+        // ダッシュボードやハンドルがズレて動いてしまわないようにするため。
+        // ズレていたら CABIN_Y / CABIN_Z を直接、微調整してください。
         // ==========================================================
         const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
-        const INTERIOR_FORWARD_OFFSET = 0.55; // 目の位置から、さらに前へ(m)
-        const INTERIOR_DROP_OFFSET = 0.30; // 目の位置から、下へ(m)
+        const CABIN_Y = 0.451; // 内装の高さの基準(以前ちょうど良かった視点から算出した固定値)
+        const CABIN_Z = 0.646; // 内装の前後位置の基準(同上)
 
         loader.load(
           'models/kaze-r01-interior.glb',
@@ -210,11 +210,10 @@ function buildKazeR01(paintColorHex) {
             interior.position.z -= iCenter.z;
 
             // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
-            // あとはコックピットの推定位置(EYE_Z / EYE_Y)を基準に、
-            // 前方・下方向へオフセットするだけでよい。
+            // あとは車体側の固定位置(CABIN_Y / CABIN_Z)へオフセットするだけでよい。
             interior.position.x = 0;
-            interior.position.y = EYE_Y - INTERIOR_DROP_OFFSET;
-            interior.position.z = EYE_Z + INTERIOR_FORWARD_OFFSET;
+            interior.position.y = CABIN_Y;
+            interior.position.z = CABIN_Z;
 
             // 内装は外装とは別のAI生成なので、外装用のYAW_CORRECTIONを
             // そのまま使い回すのではなく、内装専用の角度を用意した。
@@ -244,10 +243,10 @@ function buildKazeR01(paintColorHex) {
             const barRadius = 0.025;
 
             const cageHalfWidth = 0.68;
-            const floorY = EYE_Y - INTERIOR_DROP_OFFSET - 0.30; // 内装の足元あたり
-            const roofY = EYE_Y + 0.28;
-            const windshieldZ = EYE_Z + INTERIOR_FORWARD_OFFSET + 0.35;
-            const rearZ = EYE_Z - 0.55;
+            const floorY = CABIN_Y - 0.30; // 内装の足元あたり
+            const roofY = CABIN_Y + 0.28;
+            const windshieldZ = CABIN_Z + 0.35;
+            const rearZ = CABIN_Z - 0.55 - 0.55;
 
             function addBar(x1, y1, z1, x2, y2, z2) {
               const a = new THREE.Vector3(x1, y1, z1);
@@ -315,8 +314,8 @@ function buildKazeR01(paintColorHex) {
             steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
             steeringWheel.position.set(
               -0.28,
-              EYE_Y - 0.30,
-              EYE_Z + INTERIOR_FORWARD_OFFSET - 0.10
+              CABIN_Y,
+              CABIN_Z - 0.10
             );
           },
           undefined,

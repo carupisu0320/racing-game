@@ -34,15 +34,21 @@ function buildKazeR01(paintColorHex) {
   const TARGET_LENGTH = 4.52;
   const groundClearance = 0.145;
 
-  // 内装は.glb側でうまく生成できなかったため、手書きの簡易内装を用意する。
-  // 外装(Meshyのモデル)とは別に、キャビンの位置に重ねて配置する。
-  // 外装(model)にはYAW_CORRECTIONで向き補正をかけているので、内装も
-  // 同じだけ回転させないと、外装と内装の向きがズレて「横向き」に見えてしまう。
+  // 内装は.glbに含まれていないので、ゲーム側が参照するダミーの
+  // グループ・マテリアルを用意しておく(無いとエラーになるため)
   const interiorGroup = new THREE.Group();
-  interiorGroup.rotation.y = YAW_CORRECTION;
   car.add(interiorGroup);
+  const steeringWheel = new THREE.Group();
+  interiorGroup.add(steeringWheel);
 
-  const paintColor = paintColorHex !== undefined ? paintColorHex : 0x6d7175;
+  // 外装(.glbの本体)だけを後から表示/非表示できるように、参照用の
+  // オブジェクトを用意しておく。.glbはこの関数の戻り値を返した後、
+  // 非同期で読み込みが終わってから中身(model)が入るため、
+  // プリミティブな値ではなく「入れ物」ごと返すことで、後から
+  // 中身が更新されても参照側(index.html)が最新の状態を見られるようにする。
+  const exteriorModelRef = { model: null };
+
+  const paintColor = paintColorHex !== undefined ? paintColorHex : 0xaab0b6;
   const paintMat = new THREE.MeshStandardMaterial({ color: paintColor, metalness: 0.55, roughness: 0.27 });
 
   // 物理・当たり判定で使う数値(これまでと同じ実車寸法ベース)
@@ -54,69 +60,7 @@ function buildKazeR01(paintColorHex) {
   const collisionRadius = 1.9;
 
   const bPillarZ = -0.60;
-  const cabinFrontZ = 0.50;
-  const floorHeight = groundClearance + 0.145;
-  // 実際にゲーム内の視点調整モードで確認していただいた、ちょうど良い位置
-  const firstPersonOffset = new THREE.Vector3(-0.235, 0.751, 0.096);
-
-  const interiorMat = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.70 });
-  const seatMat = new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: 0.72 });
-  const gripMat = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.82 });
-  const badgeMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc0, metalness: 0.70, roughness: 0.25 });
-  const pedalMat = new THREE.MeshStandardMaterial({ color: 0x181818, metalness: 0.4, roughness: 0.5 });
-
-  const dashboard = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.17, 0.22), interiorMat);
-  dashboard.position.set(-0.10, floorHeight + 0.50, cabinFrontZ - 0.30);
-  interiorGroup.add(dashboard);
-
-  // ハンドル(ゲーム側のステアリング角度に合わせて回転させるので、独立したGroupにする)
-  const steeringWheel = new THREE.Group();
-  const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.021, 12, 24), gripMat);
-  steeringWheel.add(wheelRing);
-  const centerBadge = new THREE.Mesh(new THREE.CircleGeometry(0.045, 16), badgeMat);
-  centerBadge.position.z = 0.015;
-  steeringWheel.add(centerBadge);
-  steeringWheel.position.set(-0.32, floorHeight + 0.56, cabinFrontZ - 0.05);
-  steeringWheel.rotation.x = -0.35;
-  interiorGroup.add(steeringWheel);
-
-  [-1, 1].forEach((sign) => {
-    const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.02, 0.09), badgeMat);
-    paddle.position.set(sign * 0.16, floorHeight + 0.54, cabinFrontZ + 0.03);
-    interiorGroup.add(paddle);
-  });
-
-  function createSeat(x) {
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.09), seatMat);
-    back.position.set(x, floorHeight + 0.46, bPillarZ + 0.35);
-    back.rotation.x = -0.15;
-    interiorGroup.add(back);
-
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.16, 0.10), seatMat);
-    head.position.set(x, floorHeight + 0.76, bPillarZ + 0.40);
-    head.rotation.x = -0.15;
-    interiorGroup.add(head);
-
-    const base = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.09, 0.45), seatMat);
-    base.position.set(x, floorHeight + 0.24, bPillarZ + 0.55);
-    interiorGroup.add(base);
-  }
-  createSeat(-0.32);
-  createSeat(0.32);
-
-  const brakePedal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.20), pedalMat);
-  brakePedal.position.set(-0.38, floorHeight + 0.06, cabinFrontZ - 0.05);
-  brakePedal.rotation.x = -0.5;
-  interiorGroup.add(brakePedal);
-
-  const accelPedal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.18), pedalMat);
-  accelPedal.position.set(-0.25, floorHeight + 0.06, cabinFrontZ - 0.07);
-  accelPedal.rotation.x = -0.35;
-  interiorGroup.add(accelPedal);
-
-  const floorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.20, 0.04, 1.0), interiorMat);
-  floorPanel.position.set(-0.32, floorHeight, bPillarZ + 0.30);
-  interiorGroup.add(floorPanel);
+  const firstPersonOffset = new THREE.Vector3(-0.32, groundClearance + 0.145 + 0.76, bPillarZ + 0.50);
 
   // ==========================================================
   // ミラー(.glb側にミラー専用パーツが無いので、これまでと同じ仕組みで用意する)
@@ -203,34 +147,183 @@ function buildKazeR01(paintColorHex) {
         model.position.x -= center.x;
         model.position.z -= center.z;
         model.position.y -= box2.min.y;
+        model.updateMatrixWorld(true);
+
+        // 一人称視点の目の位置。自動推定(レイキャストで中央値の高さを探す方式)は
+        // このモデルではうまく機能せず、フロントトランク付近に着地してしまったため、
+        // 分かりやすい手動調整の数値に切り替えた。
+        // ここの3つの値だけを見ながら、実際の見え方に合わせて調整してください。
+        //   EYE_X: 左右位置(0=中央)
+        //   EYE_Y: 地面からの高さ(m、実車の目線として自然な値から開始)
+        //   EYE_Z: 前後位置(0=バウンディングボックスの中心。＋方向がノーズ側か
+        //          テール側かは実際に試すまで分からないため、ズレていたら符号を
+        //          反転するか、値を大きく/小さくして探ってください)
+        const EYE_X = -0.235;
+        const EYE_Y = 0.751;
+        const EYE_Z = 0.096; // 視点調整モードで確認いただいたちょうど良い位置
+
+        firstPersonOffset.set(EYE_X, EYE_Y, EYE_Z);
 
         model.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
-
-            // 車体(ボディ)らしいマテリアルを判定して塗装色を反映する。
-            // マテリアル名に手がかりがあればそれを優先し、無ければ
-            // 「暗すぎない色」を車体とみなす(タイヤ・ガラス・内装は暗い色が多いため)。
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            materials.forEach((mat) => {
-              if (!mat || !mat.color) return;
-              const name = (mat.name || '').toLowerCase();
-              const looksLikeBody = /body|paint|car|main|exterior|shell/.test(name);
-              const looksLikeExcluded = /glass|window|tire|tyre|wheel|rim|light|lamp|black|chrome/.test(name);
-              const hsl = { h: 0, s: 0, l: 0 };
-              mat.color.getHSL(hsl);
-              const isLightEnough = hsl.l > 0.35; // 暗すぎる(タイヤ等)は除外
-              if (looksLikeBody || (!looksLikeExcluded && isLightEnough)) {
-                mat.color.set(paintColor);
-                mat.needsUpdate = true;
-              }
-            });
+            // 塗装色の上書きはしない: 今回のモデルはボディ・ガラス・タイヤの
+            // 色分けがテクスチャに焼き込まれているため、ここで色を上書きすると
+            // 全体が一色に塗り潰されて、その色分けが台無しになってしまう。
+            // (このモデルでは「プレイヤーが塗装色を選べる」機能は使えない)
           }
         });
 
         car.add(model);
+        exteriorModelRef.model = model;
         console.log('KAZE R-01(models/kaze-r01.glb)の読み込みに成功しました。');
+
+        // ==========================================================
+        // 内装(ハンドル+ダッシュボード、Meshyで別途生成したもの)を読み込む。
+        // 外装のコックピット位置を厳密には知らないので、上で計算した
+        // 「一人称視点の目の位置」(EYE_Z / EYE_Y)を手がかりに、
+        // その少し前方・下あたりに置く。ズレていたら INTERIOR_* の
+        // 数値を微調整してください。
+        // ==========================================================
+        const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
+        const INTERIOR_FORWARD_OFFSET = 0.55; // 目の位置から、さらに前へ(m)
+        const INTERIOR_DROP_OFFSET = 0.30; // 目の位置から、下へ(m)
+
+        loader.load(
+          'models/kaze-r01-interior.glb',
+          (interiorGltf) => {
+            const interior = interiorGltf.scene;
+
+            const iBox = new THREE.Box3().setFromObject(interior);
+            const iSize = new THREE.Vector3();
+            iBox.getSize(iSize);
+            if (iSize.x > 0) {
+              interior.scale.setScalar(INTERIOR_TARGET_WIDTH / iSize.x);
+            }
+
+            const iBox2 = new THREE.Box3().setFromObject(interior);
+            const iCenter = new THREE.Vector3();
+            iBox2.getCenter(iCenter);
+            interior.position.x -= iCenter.x;
+            interior.position.y -= iCenter.y;
+            interior.position.z -= iCenter.z;
+
+            // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
+            // あとはコックピットの推定位置(EYE_Z / EYE_Y)を基準に、
+            // 前方・下方向へオフセットするだけでよい。
+            interior.position.x = 0;
+            interior.position.y = EYE_Y - INTERIOR_DROP_OFFSET;
+            interior.position.z = EYE_Z + INTERIOR_FORWARD_OFFSET;
+
+            // 内装は外装とは別のAI生成なので、外装用のYAW_CORRECTIONを
+            // そのまま使い回すのではなく、内装専用の角度を用意した。
+            // 横向きになる場合は、この値を Math.PI / 2 や -Math.PI / 2、
+            // Math.PI(180度)などに変えて試してください。
+            const INTERIOR_YAW_CORRECTION = 0;
+            interior.rotation.y = INTERIOR_YAW_CORRECTION;
+
+            interior.traverse((child) => {
+              if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+
+            // 今回のモデルはシート+ダッシュボードのみ(ハンドル無し)。
+            // 回転させる必要が無いので、そのままinteriorGroupに追加する。
+            interiorGroup.add(interior);
+            console.log('内装(シート+ダッシュボード)の読み込みに成功しました。');
+
+            // ==========================================================
+            // ロールケージ風フレーム(フロントガラスの枠・屋根・サイド)を
+            // 単純な図形で自作する。AIでの生成が何度も車全体になって
+            // しまったため、ここは確実に位置を制御できる方法にした。
+            // ==========================================================
+            const cageMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, metalness: 0.6, roughness: 0.4 });
+            const barRadius = 0.025;
+
+            const cageHalfWidth = 0.68;
+            const floorY = EYE_Y - INTERIOR_DROP_OFFSET - 0.30; // 内装の足元あたり
+            const roofY = EYE_Y + 0.28;
+            const windshieldZ = EYE_Z + INTERIOR_FORWARD_OFFSET + 0.35;
+            const rearZ = EYE_Z - 0.55;
+
+            function addBar(x1, y1, z1, x2, y2, z2) {
+              const a = new THREE.Vector3(x1, y1, z1);
+              const b = new THREE.Vector3(x2, y2, z2);
+              const len = a.distanceTo(b);
+              const bar = new THREE.Mesh(
+                new THREE.CylinderGeometry(barRadius, barRadius, len, 8),
+                cageMat
+              );
+              bar.position.copy(a).add(b).multiplyScalar(0.5);
+              bar.quaternion.setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0),
+                b.clone().sub(a).normalize()
+              );
+              bar.castShadow = true;
+              interiorGroup.add(bar);
+            }
+
+            // フロントガラスの枠(縦2本+上1本)
+            addBar(-cageHalfWidth, floorY + 0.55, windshieldZ, -cageHalfWidth, roofY, windshieldZ);
+            addBar(cageHalfWidth, floorY + 0.55, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+            addBar(-cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+
+            // 屋根(前後を繋ぐ2本+リア側の横棒)
+            addBar(-cageHalfWidth, roofY, windshieldZ, -cageHalfWidth, roofY, rearZ);
+            addBar(cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, rearZ);
+            addBar(-cageHalfWidth, roofY, rearZ, cageHalfWidth, roofY, rearZ);
+
+            // サイド(ドア枠、左右それぞれ縦1本)
+            addBar(-cageHalfWidth, floorY + 0.50, rearZ, -cageHalfWidth, roofY, rearZ);
+            addBar(cageHalfWidth, floorY + 0.50, rearZ, cageHalfWidth, roofY, rearZ);
+
+            // ==========================================================
+            // ハンドルも単純な図形で自作する。steeringWheelグループに
+            // 入れるので、既存のステアリング操作の回転アニメーションが
+            // そのまま効く。
+            // ==========================================================
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+            const hubMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.5, roughness: 0.4 });
+
+            const wheelRing = new THREE.Mesh(
+              new THREE.TorusGeometry(0.16, 0.018, 10, 24),
+              wheelMat
+            );
+            steeringWheel.add(wheelRing);
+
+            const wheelHub = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
+              hubMat
+            );
+            wheelHub.rotation.x = Math.PI / 2;
+            steeringWheel.add(wheelHub);
+
+            [0, 1, 2].forEach((i) => {
+              const angle = (i / 3) * Math.PI * 2;
+              const spoke = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.13, 0.015),
+                wheelMat
+              );
+              spoke.position.set(Math.cos(angle) * 0.08, Math.sin(angle) * 0.08, 0);
+              spoke.rotation.z = angle + Math.PI / 2;
+              steeringWheel.add(spoke);
+            });
+
+            steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
+            steeringWheel.position.set(
+              -0.28,
+              EYE_Y - 0.30,
+              EYE_Z + INTERIOR_FORWARD_OFFSET - 0.10
+            );
+          },
+          undefined,
+          (interiorError) => {
+            console.warn('内装(models/kaze-r01-interior.glb)が見つからないか読み込みに失敗しました。内装なしで続行します。', interiorError);
+          }
+        );
       },
       undefined,
       (error) => {
@@ -253,6 +346,7 @@ function buildKazeR01(paintColorHex) {
     interiorGroup,
     steeringWheel,
     firstPersonOffset,
+    exteriorModelRef,
     mirrorRenderTarget,
     mirrorCamera,
     updateMirrorCamera,
@@ -269,6 +363,6 @@ function buildKazeR01(paintColorHex) {
 window.CAR_MODELS = window.CAR_MODELS || {};
 window.CAR_MODELS.kazeR01 = {
   label: 'KAZE R-01',
-  defaultColor: 0x6d7175, // 参考画像のガンメタリック系グレー
+  defaultColor: 0xaab0b6,
   build: buildKazeR01
 };

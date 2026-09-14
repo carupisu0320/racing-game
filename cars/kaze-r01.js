@@ -158,9 +158,9 @@ function buildKazeR01(paintColorHex) {
         //   EYE_Z: 前後位置(0=バウンディングボックスの中心。＋方向がノーズ側か
         //          テール側かは実際に試すまで分からないため、ズレていたら符号を
         //          反転するか、値を大きく/小さくして探ってください)
-        const EYE_X = -0.235;
-        const EYE_Y = 0.751;
-        const EYE_Z = 0.096; // 視点調整モードで確認いただいたちょうど良い位置
+        const EYE_X = -0.243;
+        const EYE_Y = 0.726;
+        const EYE_Z = 0.626; // 視点調整モードで確認いただいたちょうど良い位置
 
         firstPersonOffset.set(EYE_X, EYE_Y, EYE_Z);
 

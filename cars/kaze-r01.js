@@ -187,8 +187,9 @@ function buildKazeR01(paintColorHex) {
         // ズレていたら CABIN_Y / CABIN_Z を直接、微調整してください。
         // ==========================================================
         const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
-        const CABIN_Y = 0.660; // 内装の高さの基準(指定いただいたハンドル位置に合わせる)
-        const CABIN_Z = 1.402; // 内装の前後位置の基準(同上。ハンドルはCABIN_Zより0.10だけ手前)
+        const CABIN_X = -0.285; // 内装・ハンドル共通の左右位置(指定いただいた座標)
+        const CABIN_Y = 0.660; // 内装・ハンドル共通の高さ(指定いただいた座標)
+        const CABIN_Z = 1.302; // 内装・ハンドル共通の前後位置(指定いただいた座標)
 
         loader.load(
           'models/kaze-r01-interior.glb',
@@ -211,7 +212,7 @@ function buildKazeR01(paintColorHex) {
 
             // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
             // あとは車体側の固定位置(CABIN_Y / CABIN_Z)へオフセットするだけでよい。
-            interior.position.x = 0;
+            interior.position.x = CABIN_X;
             interior.position.y = CABIN_Y;
             interior.position.z = CABIN_Z;
 
@@ -266,18 +267,20 @@ function buildKazeR01(paintColorHex) {
             }
 
             // フロントガラスの枠(縦2本+上1本)
-            addBar(-cageHalfWidth, floorY + 0.55, windshieldZ, -cageHalfWidth, roofY, windshieldZ);
-            addBar(cageHalfWidth, floorY + 0.55, windshieldZ, cageHalfWidth, roofY, windshieldZ);
-            addBar(-cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+            // ※ご要望により、屋根・枠の表示は一旦オフにしています。
+            //   再度表示したくなったら、下のコメントを外してください。
+            // addBar(-cageHalfWidth, floorY + 0.55, windshieldZ, -cageHalfWidth, roofY, windshieldZ);
+            // addBar(cageHalfWidth, floorY + 0.55, windshieldZ, cageHalfWidth, roofY, windshieldZ);
+            // addBar(-cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, windshieldZ);
 
             // 屋根(前後を繋ぐ2本+リア側の横棒)
-            addBar(-cageHalfWidth, roofY, windshieldZ, -cageHalfWidth, roofY, rearZ);
-            addBar(cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, rearZ);
-            addBar(-cageHalfWidth, roofY, rearZ, cageHalfWidth, roofY, rearZ);
+            // addBar(-cageHalfWidth, roofY, windshieldZ, -cageHalfWidth, roofY, rearZ);
+            // addBar(cageHalfWidth, roofY, windshieldZ, cageHalfWidth, roofY, rearZ);
+            // addBar(-cageHalfWidth, roofY, rearZ, cageHalfWidth, roofY, rearZ);
 
             // サイド(ドア枠、左右それぞれ縦1本)
-            addBar(-cageHalfWidth, floorY + 0.50, rearZ, -cageHalfWidth, roofY, rearZ);
-            addBar(cageHalfWidth, floorY + 0.50, rearZ, cageHalfWidth, roofY, rearZ);
+            // addBar(-cageHalfWidth, floorY + 0.50, rearZ, -cageHalfWidth, roofY, rearZ);
+            // addBar(cageHalfWidth, floorY + 0.50, rearZ, cageHalfWidth, roofY, rearZ);
 
             // ==========================================================
             // ハンドルも単純な図形で自作する。steeringWheelグループに
@@ -313,9 +316,9 @@ function buildKazeR01(paintColorHex) {
 
             steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
             steeringWheel.position.set(
-              -0.285,
+              CABIN_X,
               CABIN_Y,
-              CABIN_Z - 0.10
+              CABIN_Z
             );
           },
           undefined,

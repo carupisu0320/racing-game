@@ -187,8 +187,8 @@ function buildKazeR01(paintColorHex) {
         // ズレていたら CABIN_Y / CABIN_Z を直接、微調整してください。
         // ==========================================================
         const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
-        const CABIN_Y = 0.451; // 内装の高さの基準(以前ちょうど良かった視点から算出した固定値)
-        const CABIN_Z = 0.646; // 内装の前後位置の基準(同上)
+        const CABIN_Y = 0.660; // 内装の高さの基準(指定いただいたハンドル位置に合わせる)
+        const CABIN_Z = 1.402; // 内装の前後位置の基準(同上。ハンドルはCABIN_Zより0.10だけ手前)
 
         loader.load(
           'models/kaze-r01-interior.glb',
@@ -313,7 +313,7 @@ function buildKazeR01(paintColorHex) {
 
             steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
             steeringWheel.position.set(
-              -0.28,
+              -0.285,
               CABIN_Y,
               CABIN_Z - 0.10
             );

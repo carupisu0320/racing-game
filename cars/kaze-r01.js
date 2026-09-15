@@ -187,8 +187,9 @@ function buildKazeR01(paintColorHex) {
         // ズレていたら CABIN_Y / CABIN_Z を直接、微調整してください。
         // ==========================================================
         const INTERIOR_TARGET_WIDTH = 1.25; // ダッシュボードの目標横幅(m)
-        const CABIN_Y = 0.660; // 内装の高さ(以前の座標のまま)
-        const CABIN_Z = 1.402; // 内装の前後位置(以前の座標のまま)
+        const CABIN_X = -0.256; // 内装の左右位置(指定いただいた座標)
+        const CABIN_Y = 0.726; // 内装の高さ(指定いただいた座標)
+        const CABIN_Z = 0.185; // 内装の前後位置(指定いただいた座標)
         // ハンドルの座標は内装とは別物なので、下のsteeringWheel.position.setで
         // (-0.285, 0.660, 1.302) を直接指定している(このCABIN_Y/Zとは連動させない)
 
@@ -213,7 +214,7 @@ function buildKazeR01(paintColorHex) {
 
             // ここまでで内装モデルの中心が原点(0,0,0)に来ているので、
             // あとは車体側の固定位置(CABIN_Y / CABIN_Z)へオフセットするだけでよい。
-            interior.position.x = 0;
+            interior.position.x = CABIN_X;
             interior.position.y = CABIN_Y;
             interior.position.z = CABIN_Z;
 

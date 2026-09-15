@@ -71,6 +71,9 @@ function buildKazeR01(paintColorHex) {
   mirrorRenderTarget.texture.repeat.x = -1;
   mirrorRenderTarget.texture.offset.x = 1;
 
+  // 一人称視点のときに外装(Meshyのモデル)を非表示にするための参照
+  let exteriorModel = null;
+
   function updateMirrorCamera() {
     const worldOffset = firstPersonOffset.clone().applyQuaternion(car.quaternion);
     mirrorCamera.position.copy(car.position).add(worldOffset);
@@ -80,6 +83,16 @@ function buildKazeR01(paintColorHex) {
     const dir = new THREE.Vector3(Math.sin(backYaw), 0, Math.cos(backYaw));
     mirrorCamera.up.set(0, 1, 0);
     mirrorCamera.lookAt(mirrorCamera.position.clone().add(dir));
+
+    // 一人称視点のときは外装(車体)を非表示にする(内側から見た自分の車体で
+    // 視界が塞がれてしまうため)。反対に三人称のときは内装を非表示にする。
+    // (index.html側で「interiorGroup.visible = true」を毎回セットしているが、
+    //  ここで毎フレーム上書きすることでKAZEだけこの挙動にできる)
+    const isFirstPerson = (window.cameraMode === 'firstPerson');
+    if (exteriorModel) {
+      exteriorModel.visible = !isFirstPerson;
+    }
+    interiorGroup.visible = isFirstPerson;
   }
 
   const sideMirrorRTs = [];
@@ -176,6 +189,7 @@ function buildKazeR01(paintColorHex) {
         });
 
         car.add(model);
+        exteriorModel = model;
         exteriorModelRef.model = model;
         console.log('KAZE R-01(models/kaze-r01.glb)の読み込みに成功しました。');
 

@@ -1590,9 +1590,11 @@ renderer.domElement.addEventListener('pointercancel', () => {
 
 // カメラモード切り替え(Cキーで三人称/一人称を切り替え)
 let cameraMode = 'chase'; // 'chase' または 'firstPerson'
+window.cameraMode = cameraMode; // 車ごとのファイル(cars/*.js)からも参照できるようにする
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'c') {
     cameraMode = (cameraMode === 'chase') ? 'firstPerson' : 'chase';
+    window.cameraMode = cameraMode;
   }
 });
 

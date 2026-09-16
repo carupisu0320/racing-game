@@ -171,9 +171,9 @@ function buildKazeR01(paintColorHex) {
         //   EYE_Z: 前後位置(0=バウンディングボックスの中心。＋方向がノーズ側か
         //          テール側かは実際に試すまで分からないため、ズレていたら符号を
         //          反転するか、値を大きく/小さくして探ってください)
-        const EYE_X = -0.243;
-        const EYE_Y = 0.726;
-        const EYE_Z = 0.626; // 視点調整モードで確認いただいたちょうど良い位置
+        const EYE_X = 0.493;
+        const EYE_Y = 0.926;
+        const EYE_Z = 0.156; // 視点調整モードで確認いただいたちょうど良い位置
 
         firstPersonOffset.set(EYE_X, EYE_Y, EYE_Z);
 
@@ -331,7 +331,7 @@ function buildKazeR01(paintColorHex) {
             });
 
             steeringWheel.rotation.x = -0.35; // ハンドルらしく少し傾ける
-            steeringWheel.position.set(-0.285, 0.660, 1.302); // ハンドル専用の座標(内装とは別)
+            steeringWheel.position.set(0.493, 0.836, 0.686); // ハンドル専用の座標(内装とは別)
           },
           undefined,
           (interiorError) => {

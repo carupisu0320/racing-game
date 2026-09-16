@@ -354,6 +354,58 @@ function buildKazeR01(paintColorHex) {
   contactShadow.position.y = 0.018;
   car.add(contactShadow);
 
+  // ==========================================================
+  // KAZE専用: 一人称視点の座標をゲーム内で調整できるモード。
+  // I/K:前後  J/L:左右  U/O:上下 (Shiftを押しながらで大きく動く)
+  // car.parentで「今このKAZEインスタンスが実際にシーンに
+  // 追加されているか(=現在選ばれている車かどうか)」を見ているので、
+  // 他の車(sports-car.js)に切り替えているときは何も起こらない。
+  // ==========================================================
+  let eyeAdjustOverlay = document.getElementById('kazeEyeAdjustOverlay');
+  if (!eyeAdjustOverlay) {
+    eyeAdjustOverlay = document.createElement('div');
+    eyeAdjustOverlay.id = 'kazeEyeAdjustOverlay';
+    eyeAdjustOverlay.style.cssText =
+      'position:absolute; top:60px; left:10px; background:rgba(0,0,0,0.6); color:#fff;' +
+      'font-family:sans-serif; font-size:13px; padding:8px 12px; border-radius:6px;' +
+      'z-index:20; display:none; pointer-events:none; white-space:pre;';
+    document.body.appendChild(eyeAdjustOverlay);
+  }
+
+  function updateEyeAdjustOverlay() {
+    eyeAdjustOverlay.textContent =
+      '【視点調整モード】I/K:前後 J/L:左右 U/O:上下 (Shiftで大きく動く)\n' +
+      'x=' + firstPersonOffset.x.toFixed(3) +
+      ' y=' + firstPersonOffset.y.toFixed(3) +
+      ' z=' + firstPersonOffset.z.toFixed(3);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (!car.parent) return; // KAZEが今アクティブな車でなければ何もしない
+    const step = e.shiftKey ? 0.05 : 0.01;
+    let moved = true;
+    switch (e.key.toLowerCase()) {
+      case 'i': firstPersonOffset.z += step; break;
+      case 'k': firstPersonOffset.z -= step; break;
+      case 'j': firstPersonOffset.x -= step; break;
+      case 'l': firstPersonOffset.x += step; break;
+      case 'u': firstPersonOffset.y += step; break;
+      case 'o': firstPersonOffset.y -= step; break;
+      default: moved = false;
+    }
+    if (moved) {
+      eyeAdjustOverlay.style.display = 'block';
+      updateEyeAdjustOverlay();
+    }
+  });
+
+  // 車を切り替えてKAZEが非アクティブになったら、表示を隠す
+  setInterval(() => {
+    if (!car.parent && eyeAdjustOverlay.style.display !== 'none') {
+      eyeAdjustOverlay.style.display = 'none';
+    }
+  }, 300);
+
   return {
     group: car,
     paintMat,

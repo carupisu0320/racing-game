@@ -293,6 +293,50 @@ function buildKazeR01(paintColorHex) {
         const floorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.0), interiorMat);
         floorPanel.position.set(-0.35, 0.5 + bodyLift, 0.2);
         interiorGroup.add(floorPanel);
+
+        // ==========================================================
+        // 窓・ドア・屋根(一人称のときは外装=Meshyのモデルを非表示にしているため、
+        // こちらのinteriorGroup側に入れないと何も見えなくなってしまう。
+        // sports-car.jsと同じ座標・サイズで用意する)
+        // ==========================================================
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, metalness: 0.6, roughness: 0.3 });
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2226, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.45 });
+        const trimMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 });
+
+        const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.65, 1.2, 0.05), glassMat);
+        windshield.position.set(0, 1.3 + bodyLift, 1.0);
+        windshield.rotation.x = -0.45;
+        interiorGroup.add(windshield);
+
+        const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.9, 0.5), glassMat);
+        rearWindow.position.set(0, 1.3 + bodyLift, -1.75);
+        rearWindow.rotation.x = 0.2;
+        interiorGroup.add(rearWindow);
+
+        // 屋根(天井)
+        const roofPanel = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.05, 2.2), roofMat);
+        roofPanel.position.set(0, 1.78 + bodyLift, -0.3);
+        interiorGroup.add(roofPanel);
+
+        [-1, 1].forEach((sign) => {
+          // サイドウィンドウ
+          const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.85, 2.7), glassMat);
+          sideWindow.position.set(sign * 0.85, 1.33 + bodyLift, -0.3);
+          interiorGroup.add(sideWindow);
+
+          // ドア(内側のトリム・アームレスト・ハンドル)
+          const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 1.2), trimMat);
+          doorTrim.position.set(sign * 0.72, 0.86 + bodyLift, -0.1);
+          interiorGroup.add(doorTrim);
+
+          const armrest = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.5), roofMat);
+          armrest.position.set(sign * 0.74, 1.02 + bodyLift, -0.1);
+          interiorGroup.add(armrest);
+
+          const doorHandle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.18), trimMat);
+          doorHandle.position.set(sign * 0.72, 0.95 + bodyLift, 0.25);
+          interiorGroup.add(doorHandle);
+        });
       },
       undefined,
       (error) => {

@@ -289,19 +289,29 @@ function buildKazeR01(paintColorHex) {
         accelPedal.rotation.x = -0.35;
         interiorGroup.add(accelPedal);
 
-        // フロアパネル
-        const floorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.0), interiorMat);
-        floorPanel.position.set(-0.35, 0.5 + bodyLift, 0.2);
+        // フロアパネル(車内全体を覆う大きさに拡大)
+        const floorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.05, 2.6), interiorMat);
+        floorPanel.position.set(0, 0.5 + bodyLift, -0.3);
         interiorGroup.add(floorPanel);
 
         // ==========================================================
-        // 窓・ドア・屋根(一人称のときは外装=Meshyのモデルを非表示にしているため、
-        // こちらのinteriorGroup側に入れないと何も見えなくなってしまう。
-        // sports-car.jsと同じ座標・サイズで用意する)
+        // 窓・ドア・屋根・前後の壁(一人称のときは外装=Meshyのモデルを非表示に
+        // しているため、こちらのinteriorGroup側に入れないと何も見えなくなって
+        // しまう。タイヤ以外の「囲まれている感じ」が出るよう一通り追加する。
         // ==========================================================
         const roofMat = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, metalness: 0.6, roughness: 0.3 });
         const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2226, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.45 });
         const trimMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 });
+
+        // フロントの壁(ダッシュボード下〜床をふさぐフットウェル前面)
+        const frontWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 0.05), paintMat);
+        frontWall.position.set(0, 1.15 + bodyLift, 0.95);
+        interiorGroup.add(frontWall);
+
+        // リアの壁(トランク側をふさぐ)
+        const rearWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.0, 0.05), paintMat);
+        rearWall.position.set(0, 1.0 + bodyLift, -1.55);
+        interiorGroup.add(rearWall);
 
         const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.65, 1.2, 0.05), glassMat);
         windshield.position.set(0, 1.3 + bodyLift, 1.0);
@@ -323,6 +333,11 @@ function buildKazeR01(paintColorHex) {
           const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.85, 2.7), glassMat);
           sideWindow.position.set(sign * 0.85, 1.33 + bodyLift, -0.3);
           interiorGroup.add(sideWindow);
+
+          // サイド下部の壁(ドア下端〜床をふさぐ)
+          const sideWallLower = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 2.7), paintMat);
+          sideWallLower.position.set(sign * 0.85, 0.72 + bodyLift, -0.3);
+          interiorGroup.add(sideWallLower);
 
           // ドア(内側のトリム・アームレスト・ハンドル)
           const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 1.2), trimMat);

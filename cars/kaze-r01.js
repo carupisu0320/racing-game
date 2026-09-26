@@ -303,40 +303,41 @@ function buildKazeR01(paintColorHex) {
         const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2226, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.45 });
         const trimMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 });
 
-        // フロントの壁(ダッシュボード下〜床をふさぐフットウェル前面)
-        const frontWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 0.05), paintMat);
-        frontWall.position.set(0, 1.15 + bodyLift, 0.95);
+        // フロントの壁(ダッシュボードより低い、足元の壁だけにする。
+        // 高くするとフロントガラス越しの景色を塞いでしまうため)
+        const frontWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.45, 0.05), paintMat);
+        frontWall.position.set(0, 0.84 + bodyLift, 0.95);
         interiorGroup.add(frontWall);
 
-        // リアの壁(トランク側をふさぐ)
-        const rearWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.0, 0.05), paintMat);
-        rearWall.position.set(0, 1.0 + bodyLift, -1.55);
+        // リアの壁(トランク側をふさぐ。天井を下げたのでこちらも低くする)
+        const rearWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.8, 0.05), paintMat);
+        rearWall.position.set(0, 0.9 + bodyLift, -1.55);
         interiorGroup.add(rearWall);
 
         const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.65, 1.2, 0.05), glassMat);
-        windshield.position.set(0, 1.3 + bodyLift, 1.0);
+        windshield.position.set(0, 1.15 + bodyLift, 1.0);
         windshield.rotation.x = -0.45;
         interiorGroup.add(windshield);
 
         const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.9, 0.5), glassMat);
-        rearWindow.position.set(0, 1.3 + bodyLift, -1.75);
+        rearWindow.position.set(0, 1.1 + bodyLift, -1.75);
         rearWindow.rotation.x = 0.2;
         interiorGroup.add(rearWindow);
 
-        // 屋根(天井)
+        // 屋根(天井)を低くする
         const roofPanel = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.05, 2.2), roofMat);
-        roofPanel.position.set(0, 1.78 + bodyLift, -0.3);
+        roofPanel.position.set(0, 1.55 + bodyLift, -0.3);
         interiorGroup.add(roofPanel);
 
         [-1, 1].forEach((sign) => {
-          // サイドウィンドウ
-          const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.85, 2.7), glassMat);
-          sideWindow.position.set(sign * 0.85, 1.33 + bodyLift, -0.3);
+          // サイドウィンドウ(天井を下げた分、位置も高さも少し下げる)
+          const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.7, 2.7), glassMat);
+          sideWindow.position.set(sign * 0.85, 1.13 + bodyLift, -0.3);
           interiorGroup.add(sideWindow);
 
           // サイド下部の壁(ドア下端〜床をふさぐ)
-          const sideWallLower = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 2.7), paintMat);
-          sideWallLower.position.set(sign * 0.85, 0.72 + bodyLift, -0.3);
+          const sideWallLower = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 2.7), paintMat);
+          sideWallLower.position.set(sign * 0.85, 0.65 + bodyLift, -0.3);
           interiorGroup.add(sideWallLower);
 
           // ドア(内側のトリム・アームレスト・ハンドル)
